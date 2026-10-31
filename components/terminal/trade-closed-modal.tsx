@@ -11,8 +11,12 @@ export const TradeClosedModal: React.FC = () => {
   if (!latestClosedTrade) return null;
 
   const trade = latestClosedTrade;
-  
-  const isWin = trade.status === 'WON';
+
+  // A closed-trade modal should never show a trade that is still open
+  const status = trade.status;
+  if (status === 'OPEN') return null;
+
+  const isWin = status === 'WON';
   const profitAmount =
     trade.profit !== undefined
       ? trade.profit
@@ -33,7 +37,7 @@ export const TradeClosedModal: React.FC = () => {
       duration={durationSec}
       entryPrice={trade.entryPrice.toString()}
       exitPrice={(trade.settlementPrice || trade.currentPrice).toString()}
-      status={trade.status}
+      status={status}
       onClose={clearLatestClosedTrade}
       onNewTrade={clearLatestClosedTrade}
       onViewTrades={() => {

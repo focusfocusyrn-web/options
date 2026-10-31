@@ -1,0 +1,931 @@
+﻿
+===== FILE: app\admin\login\page.tsx =====
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
+
+export default function AdminLogin() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      router.push("/admin");
+      router.refresh(); // Forces middleware to re-check the cookie
+    } else {
+      setError(data.message || "Invalid credentials");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#090d12] flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#0d141e] border border-white/10 rounded-2xl p-8">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 text-emerald-400">
+            <Lock size={24} />
+          </div>
+          <h1 className="text-2xl font-bold text-white">Admin Login</h1>
+          <p className="text-sm text-gray-400">Enter your credentials to access the master control panel.</p>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg text-center">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full bg-[#090d12] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#090d12] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl transition"
+          >
+            Access Dashboard
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+===== FILE: app\admin\page.tsx =====
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { 
+  Sliders, Receipt, ArrowLeft, Trash2, Play, Pause, 
+  TrendingUp, TrendingDown, LogOut, Edit3, X, Save, Wallet, DollarSign
+} from "lucide-react";
+
+export default function AdminPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"market" | "trades" | "wallet" | "invoices">("market");
+  
+  // Data State
+  const [market, setMarket] = useState<any>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [activeTrades, setActiveTrades] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Edit Modal State
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [customPrice, setCustomPrice] = useState("");
+
+  // Wallet State
+  const [adjustAmount, setAdjustAmount] = useState("100");
+
+  const loadData = async () => {
+    try {
+      const [mRes, iRes, tRes] = await Promise.all([
+        fetch("/api/market", { cache: "no-store" }),
+        fetch("/api/invoices", { cache: "no-store" }),
+        fetch("/api/active-trades", { cache: "no-store" }).catch(() => ({ json: () => ({ success: true, trades: [] }) }))
+      ]);
+      
+      const mData = await mRes.json();
+      const iData = await iRes.json();
+      const tData = await tRes.json();
+      
+      if (mData.success) {
+        setMarket(mData.market);
+        if (!customPrice) setCustomPrice(String(mData.market.price || 0.64976));
+      }
+      if (iData.success) setInvoices(iData.invoices || []);
+      if (tData.success) setActiveTrades(tData.trades || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateMarket = async (changes: any) => {
+    setSaving(true);
+    await fetch("/api/market", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+    });
+    await loadData();
+    setSaving(false);
+  };
+
+  const deleteAllInvoices = async () => {
+    if (!confirm("Permanently delete ALL trade history? This will wipe the user's Closed tab immediately.")) return;
+    
+    try {
+      const res = await fetch("/api/invoices", { method: "DELETE" });
+      const data = await res.json();
+      
+      if (data.success) {
+        alert(`âœ… Cleared ${data.deleted ?? 'all'} trade records.`);
+        setInvoices([]);
+        await loadData();
+      } else {
+        alert("âŒ Failed to clear: " + data.error);
+      }
+    } catch (err: any) {
+      alert("âŒ Error: " + err.message);
+    }
+  };
+
+  const saveEditedInvoice = async () => {
+    if (!editingInvoice) return;
+    setSaving(true);
+    await fetch("/api/invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingInvoice),
+    });
+    setEditingInvoice(null);
+    await loadData();
+    setSaving(false);
+  };
+
+  // --- FIXED: Proper success/error feedback ---
+  const sendWalletCommand = async (action: 'ADD' | 'SUBTRACT') => {
+    const amount = Number(adjustAmount);
+    if (!amount || amount <= 0) return alert("Enter a valid amount");
+    
+    try {
+      const res = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`âœ… Sent $${amount} ${action === 'ADD' ? 'top-up' : 'deduction'} to terminal!`);
+        await loadData();
+      } else {
+        alert("âŒ Failed: " + data.error);
+      }
+    } catch (err: any) {
+      alert("âŒ Error: " + err.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/admin/login", { method: "DELETE" });
+    router.push("/admin/login");
+    router.refresh();
+  };
+
+  if (loading) return <div className="min-h-screen bg-[#090d12] text-white p-10 flex items-center justify-center">Loading Admin Controls...</div>;
+
+  if (!market) return (
+    <div className="min-h-screen bg-[#090d12] text-white p-10">
+      <h1 className="text-xl font-bold mb-4">Error Loading Dashboard</h1>
+      <p className="text-gray-400 mb-6">Could not load market settings. Ensure the `market_state` table exists in Supabase and has a row with `id = 'AUD/USD'`.</p>
+      <button onClick={() => window.location.reload()} className="bg-emerald-500 text-black px-6 py-2 rounded-xl font-bold">Retry</button>
+    </div>
+  );
+
+  return (
+    <main className="min-h-screen bg-[#090d12] px-4 py-8 text-white sm:px-8">
+      <div className="mx-auto max-w-6xl">
+        
+        {/* Header */}
+        <header className="border-b border-white/10 pb-6 mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">Master Control</p>
+            <h1 className="mt-3 text-3xl font-bold">Admin Dashboard</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => router.push('/en/cabinet/deposit-step-1')}
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+            >
+              <ArrowLeft size={16} /> Terminal
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-400 hover:bg-rose-500/20"
+            >
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
+        </header>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+          <button onClick={() => setActiveTab("market")} className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold whitespace-nowrap transition ${activeTab === "market" ? "bg-emerald-500 text-black" : "bg-[#0d141e] text-gray-400 hover:bg-white/5"}`}>
+            <Sliders size={18} /> Market Controls
+          </button>
+          <button onClick={() => setActiveTab("trades")} className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold whitespace-nowrap transition ${activeTab === "trades" ? "bg-emerald-500 text-black" : "bg-[#0d141e] text-gray-400 hover:bg-white/5"}`}>
+            <Wallet size={18} /> Active Trades ({activeTrades.length})
+          </button>
+          <button onClick={() => setActiveTab("wallet")} className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold whitespace-nowrap transition ${activeTab === "wallet" ? "bg-emerald-500 text-black" : "bg-[#0d141e] text-gray-400 hover:bg-white/5"}`}>
+            <DollarSign size={18} /> User Wallet
+          </button>
+          <button onClick={() => setActiveTab("invoices")} className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold whitespace-nowrap transition ${activeTab === "invoices" ? "bg-emerald-500 text-black" : "bg-[#0d141e] text-gray-400 hover:bg-white/5"}`}>
+            <Receipt size={18} /> Invoice History
+          </button>
+        </div>
+
+        {/* 1. MARKET CONTROLS */}
+        {activeTab === "market" && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-[#0d141e] p-6">
+              <h2 className="text-xl font-bold mb-4">Market Trend</h2>
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                <button onClick={() => updateMarket({ movement_mode: 'auto' })} className={`py-3 rounded-xl font-bold flex flex-col items-center gap-2 border transition ${market.movement_mode === 'auto' ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-gray-500 hover:bg-white/5'}`}>
+                  <Sliders size={18} /> Auto
+                </button>
+                <button onClick={() => updateMarket({ movement_mode: 'up' })} className={`py-3 rounded-xl font-bold flex flex-col items-center gap-2 border transition ${market.movement_mode === 'up' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'border-transparent text-gray-500 hover:bg-white/5'}`}>
+                  <TrendingUp size={18} /> Force Up
+                </button>
+                <button onClick={() => updateMarket({ movement_mode: 'down' })} className={`py-3 rounded-xl font-bold flex flex-col items-center gap-2 border transition ${market.movement_mode === 'down' ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' : 'border-transparent text-gray-500 hover:bg-white/5'}`}>
+                  <TrendingDown size={18} /> Force Down
+                </button>
+              </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <label className="text-sm text-gray-400 block mb-2">Override Global Price</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="number" 
+                    step="0.00001"
+                    value={customPrice} 
+                    onChange={(e) => setCustomPrice(e.target.value)}
+                    className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white font-mono outline-none focus:border-emerald-500" 
+                  />
+                  <button 
+                    onClick={() => updateMarket({ price: Number(customPrice) })}
+                    className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-bold transition"
+                  >
+                    Set Price
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-[#0d141e] p-6">
+              <h2 className="text-xl font-bold mb-4">Engine Status</h2>
+              <button onClick={() => updateMarket({ is_paused: !market.is_paused })} className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition ${market.is_paused ? "bg-amber-500 text-black" : "bg-emerald-500 text-black"}`}>
+                {market.is_paused ? <><Play size={20}/> Resume Market</> : <><Pause size={20}/> Pause Market</>}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. ACTIVE TRADES */}
+        {activeTab === "trades" && (
+          <div className="rounded-2xl border border-white/10 bg-[#0d141e] p-6">
+            <h2 className="text-xl font-bold mb-4">Active Positions</h2>
+            {activeTrades.length === 0 ? (
+              <p className="text-gray-500 text-sm">No open trades right now. Place a trade on the terminal to see it here.</p>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-gray-400">
+                    <th className="py-3 px-4">Asset</th>
+                    <th className="py-3 px-4">Dir</th>
+                    <th className="py-3 px-4">Stake</th>
+                    <th className="py-3 px-4">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeTrades.map((t) => (
+                    <tr key={t.id} className="border-b border-white/5 hover:bg-white/5">
+                      <td className="py-4 px-4 font-semibold">{t.assetSymbol}</td>
+                      <td className="py-4 px-4 font-bold text-emerald-400">{t.direction}</td>
+                      <td className="py-4 px-4">${t.stake}</td>
+                      <td className="py-4 px-4 flex gap-2">
+                        <button className="bg-emerald-500 text-black px-3 py-1 rounded font-bold text-xs">Force WIN</button>
+                        <button className="bg-rose-500 text-white px-3 py-1 rounded font-bold text-xs">Force LOSS</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* 3. WALLET CONTROLS */}
+        {activeTab === "wallet" && (
+          <div className="rounded-2xl border border-white/10 bg-[#0d141e] p-6 max-w-xl">
+            <h2 className="text-xl font-bold mb-4">User Wallet Controls</h2>
+            <p className="text-sm text-gray-400 mb-6">Top up or deduct funds from the user's demo balance. The terminal will sync automatically.</p>
+            
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="text-sm text-gray-400 block mb-1">Amount ($)</label>
+                <input 
+                  type="number" 
+                  value={adjustAmount} 
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                  className="w-full bg-[#090d12] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500" 
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <button 
+                  onClick={() => sendWalletCommand('ADD')}
+                  className="bg-emerald-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-emerald-400 transition"
+                >
+                  + Top Up
+                </button>
+                <button 
+                  onClick={() => sendWalletCommand('SUBTRACT')}
+                  className="bg-rose-500 text-white font-bold px-6 py-3 rounded-xl hover:bg-rose-400 transition"
+                >
+                  - Deduct
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. INVOICE HISTORY */}
+        {activeTab === "invoices" && (
+          <div className="rounded-2xl border border-white/10 bg-[#0d141e] p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Invoice History ({invoices.length})</h2>
+              <button onClick={deleteAllInvoices} className="flex items-center gap-2 bg-rose-500/10 text-rose-400 px-4 py-2 rounded-lg hover:bg-rose-500/20 text-sm font-semibold transition">
+                <Trash2 size={16} /> Clear All History
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-white/10 text-gray-400">
+                    <th className="py-3 px-4">Receipt ID</th>
+                    <th className="py-3 px-4">Asset</th>
+                    <th className="py-3 px-4">Result</th>
+                    <th className="py-3 px-4">Stake</th>
+                    <th className="py-3 px-4">P/L</th>
+                    <th className="py-3 px-4">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} className="border-b border-white/5 hover:bg-white/5">
+                      <td className="py-4 px-4 font-mono text-xs text-emerald-400">{inv.receipt_id}</td>
+                      <td className="py-4 px-4 font-semibold">{inv.asset_symbol}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${inv.status === 'WON' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{inv.status}</span>
+                      </td>
+                      <td className="py-4 px-4">${inv.stake}</td>
+                      <td className={`py-4 px-4 font-bold ${inv.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {inv.profit >= 0 ? '+' : ''}{inv.profit}
+                      </td>
+                      <td className="py-4 px-4">
+                        <button onClick={() => setEditingInvoice(inv)} className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 text-xs font-bold">
+                          <Edit3 size={14} /> Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {invoices.length === 0 && (
+                    <tr><td colSpan={6} className="text-center py-8 text-gray-500">No invoices found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT INVOICE MODAL */}
+        {editingInvoice && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+            <div className="bg-[#0d141e] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Edit Invoice</h3>
+                <button onClick={() => setEditingInvoice(null)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+              </div>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <label className="text-gray-400 block mb-1">Receipt ID</label>
+                  <input disabled value={editingInvoice.receipt_id} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-gray-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-gray-400 block mb-1">Stake ($)</label>
+                    <input type="number" value={editingInvoice.stake} onChange={(e) => setEditingInvoice({...editingInvoice, stake: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 block mb-1">Profit ($)</label>
+                    <input type="number" value={editingInvoice.profit} onChange={(e) => setEditingInvoice({...editingInvoice, profit: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-gray-400 block mb-1">Status</label>
+                  <select value={editingInvoice.status} onChange={(e) => setEditingInvoice({...editingInvoice, status: e.target.value})} className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white">
+                    <option value="WON">WON</option>
+                    <option value="LOST">LOST</option>
+                  </select>
+                </div>
+                <button onClick={saveEditedInvoice} disabled={saving} className="w-full bg-emerald-500 text-black font-bold py-3 rounded-xl mt-2 flex items-center justify-center gap-2">
+                  {saving ? "Saving..." : <><Save size={16} /> Save Changes</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+===== FILE: app\api\active-trades\route.ts =====
+import { NextResponse } from 'next/server';
+
+// Since active trades live in the client's Zustand store, we can't fetch them from the DB.
+// For the demo, we return a mocked list of active trades, or you can integrate a real DB fetch.
+// For now, this endpoint is just a placeholder so the dashboard doesn't crash.
+export async function GET() {
+  // In a real app, this would fetch from Supabase where user_id = current_user
+  return NextResponse.json({ success: true, trades: [] });
+}
+
+export async function POST(req: Request) {
+  // This is handled via Zustand on the client side. In a real app, this would set a flag
+  // in the DB that the client's polling loop picks up.
+  return NextResponse.json({ success: true });
+}
+
+===== FILE: app\api\admin\login\route.ts =====
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  try {
+    const { username, password } = await request.json();
+
+    const expectedUsername = process.env.ADMIN_USERNAME || 'admin';
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'Focus@2026!';
+
+    if (username === expectedUsername && password === expectedPassword) {
+      const response = NextResponse.json({ success: true, message: 'Authenticated successfully' });
+      
+      // Set secure HTTP-only auth token cookie
+      response.cookies.set('nova_admin_session', 'authenticated_admin_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+
+      return response;
+    }
+
+    return NextResponse.json({ success: false, message: 'Invalid Admin Credentials' }, { status: 401 });
+  } catch (error) {
+    return NextResponse.json({ success: false, message: 'Server error during authentication' }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  const response = NextResponse.json({ success: true, message: 'Logged out' });
+  response.cookies.delete('nova_admin_session');
+  return response;
+}
+
+===== FILE: app\api\invoices\route.ts =====
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SECRET_KEY!
+);
+
+// POST: Save a new invoice
+export async function POST(req: Request) {
+  try {
+    const invoice = await req.json();
+
+    const { data, error } = await supabase
+      .from('trade_invoices')
+      .insert({
+        receipt_id: invoice.receiptId,
+        asset_symbol: invoice.assetSymbol,
+        direction: invoice.direction,
+        status: invoice.status,
+        stake: invoice.stake,
+        entry_price: invoice.entryPrice,
+        settlement_price: invoice.settlementPrice,
+        profit: invoice.profit,
+        transaction_hash: invoice.transactionHash,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Invoice save error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// GET: Fetch all invoices
+export async function GET() {
+  try {
+    const { data, error } = await supabase
+      .from('trade_invoices')
+      .select('*')
+      .order('issued_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, invoices: data });
+  } catch (error: any) {
+    console.error('Invoice fetch error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE: Clear all invoices (called from Admin)
+export async function DELETE() {
+  try {
+    // First: try to delete all rows using the neq trick
+    const { error, count } = await supabase
+      .from('trade_invoices')
+      .delete({ count: 'exact' })
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (error) {
+      console.warn('First delete failed, trying fallback:', error.message);
+      
+      // Fallback: clear all rows one by one using a different filter
+      const { error: fallbackError } = await supabase
+        .from('trade_invoices')
+        .delete()
+        .gte('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (fallbackError) throw fallbackError;
+    }
+
+    return NextResponse.json({ success: true, deleted: count });
+  } catch (error: any) {
+    console.error('Invoice delete error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// PUT: Edit an existing invoice
+export async function PUT(req: Request) {
+  try {
+    const invoice = await req.json();
+    const { data, error } = await supabase
+      .from('trade_invoices')
+      .update({
+        stake: invoice.stake,
+        profit: invoice.profit,
+        status: invoice.status,
+      })
+      .eq('id', invoice.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== FILE: app\api\market\route.ts =====
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+
+export async function GET() {
+  try {
+    // Fetch the AUD/USD row (we'll use it as the global controller for now)
+    const { data, error } = await supabase
+      .from('market_state')
+      .select('*')
+      .eq('id', 'AUD/USD')
+      .single();
+      
+    if (error) throw error;
+    return NextResponse.json({ success: true, market: data });
+  } catch (error: any) {
+    console.error("Market Fetch Error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    const { data, error } = await supabase
+      .from('market_state')
+      .update({ ...body, updated_at: new Date().toISOString() })
+      .eq('id', 'AUD/USD')
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return NextResponse.json({ success: true, market: data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== FILE: app\api\wallet\balance\route.ts =====
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+
+export async function GET() {
+  const { data } = await supabase
+    .from('wallet_transactions')
+    .select('amount')
+    .eq('user_id', 'global')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  return NextResponse.json({ success: true, balance: data?.amount ?? 50000 });
+}
+
+===== FILE: app\api\wallet\route.ts =====
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+
+// POST: Admin sends a top-up/deduct command
+export async function POST(req: Request) {
+  try {
+    const { action, amount } = await req.json();
+    const { data, error } = await supabase
+      .from('wallet_commands')
+      .insert({ user_id: 'global', action, amount, processed: false })
+      .select()
+      .single();
+    if (error) throw error;
+    return NextResponse.json({ success: true, command: data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// GET: Terminal fetches unprocessed commands
+export async function GET() {
+  const { data, error } = await supabase
+    .from('wallet_commands')
+    .select('*')
+    .eq('processed', false)
+    .order('created_at', { ascending: true });
+  if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true, commands: data });
+}
+
+// PATCH: Terminal marks a command as processed
+export async function PATCH(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (id) {
+    await supabase.from('wallet_commands').update({ processed: true }).eq('id', id);
+  }
+  return NextResponse.json({ success: true });
+}
+
+===== FILE: app\api\wallet\save\route.ts =====
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+
+export async function POST(req: Request) {
+  try {
+    const { balance } = await req.json();
+
+    const { data: existing } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .eq('user_id', 'global')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('wallet_transactions')
+        .update({ amount: balance })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('wallet_transactions')
+        .insert({ user_id: 'global', amount: balance, type: 'initial' });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+===== FILE: app\en\cabinet\deposit-step-1\page.tsx =====
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import { Header } from '@/components/terminal/header';
+import { LeftNav } from '@/components/terminal/left-nav';
+import { RightUtility } from '@/components/terminal/right-utility';
+import { TradeControls } from '@/components/terminal/trade-controls';
+import { TradesPanel } from '@/components/terminal/trades-panel';
+import { LivePriceChart } from '@/components/terminal/live-price-chart';
+import { AssetSelector } from '@/components/terminal/asset-selector';
+import { TradeClosedModal } from '@/components/terminal/trade-closed-modal';
+import { AuthModal } from '@/components/terminal/auth-modal';
+import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
+
+export default function DepositStep1TerminalPage() {
+  const { activeAsset, durationSeconds, openedTrades, settleTrades } = useTerminalStore();
+  const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // A helper to create a stable base price for any symbol based on its name
+  const getBasePrice = (symbol: string): number => {
+    const fixed: Record<string, number> = {
+      'AUD/USD': 0.64976,
+      'EUR/USD': 1.08450,
+      'GBP/USD': 1.26520,
+      'USD/JPY': 154.800,
+      'BTC/USD': 64250.00,
+      'CAD/CHF': 0.64320,
+      'BHD/CNY OTC': 18.65,
+      'CAD/JPY OTC': 111.450,
+      'AED/CNY OTC': 1.9428,
+    };
+    if (fixed[symbol]) return fixed[symbol];
+    
+    let hash = 0;
+    for (let i = 0; i < symbol.length; i++) {
+      hash = (hash << 5) - hash + symbol.charCodeAt(i);
+    }
+    return Math.abs(hash % 10000) / 1000 + 0.5; 
+  };
+
+  const [livePrices, setLivePrices] = useState<Record<string, { price: number; change: number }>>({});
+  const forcedTrendRef = useRef<string>('auto');
+  const currentPricesRef = useRef<Record<string, number>>({});
+
+  // 1. Initialize all asset prices
+  useEffect(() => {
+    const symbols = [
+      'AUD/USD', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'BTC/USD', 
+      'CAD/CHF', 'BHD/CNY OTC', 'CAD/JPY OTC', 'AED/CNY OTC'
+    ];
+    const initial: Record<string, { price: number; change: number }> = {};
+    const basePrices: Record<string, number> = {};
+    
+    symbols.forEach((sym) => {
+      const base = getBasePrice(sym);
+      basePrices[sym] = base;
+      initial[sym] = { price: base, change: 0 };
+    });
+
+    setLivePrices(initial);
+    currentPricesRef.current = basePrices;
+  }, []);
+
+  // 2. The market simulation loop
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/market', { cache: 'no-store' });
+        const { market } = await res.json();
+
+        if (!market) return;
+        if (market.is_paused) return;
+
+        forcedTrendRef.current = market.movement_mode || 'auto';
+
+        let trendBias = 0;
+        if (market.movement_mode === 'up') trendBias = 0.00001;
+        if (market.movement_mode === 'down') trendBias = -0.00001;
+
+        const mockPrices: Record<string, number> = {};
+
+        Object.keys(currentPricesRef.current).forEach((symbol) => {
+          const prev = currentPricesRef.current[symbol];
+          const base = getBasePrice(symbol);
+
+          let noiseFactor = base * 0.00005;
+          let decimals = 5;
+
+          if (symbol.includes('JPY')) { noiseFactor = 0.02; decimals = 3; }
+          if (symbol.includes('BTC')) { noiseFactor = 5.0; decimals = 2; }
+          if (symbol.includes('BHD')) { noiseFactor = 0.002; decimals = 5; }
+
+          const jitter = (Math.random() - 0.5) * 2 * noiseFactor;
+          const adminMove = prev * trendBias;
+          const springBack = (base - prev) * 0.05;
+
+          let nextPrice = prev + jitter + adminMove + springBack;
+          if (nextPrice <= 0) nextPrice = base * 0.9;
+
+          currentPricesRef.current[symbol] = Number(nextPrice.toFixed(decimals));
+          mockPrices[symbol] = currentPricesRef.current[symbol];
+        });
+
+        setLivePrices((prev) => {
+          const next = { ...prev };
+          Object.keys(mockPrices).forEach((symbol) => {
+            const oldPrice = next[symbol]?.price || mockPrices[symbol];
+            const newPrice = mockPrices[symbol];
+            const change = Number((((newPrice - oldPrice) / oldPrice) * 100).toFixed(2));
+            next[symbol] = { price: newPrice, change };
+          });
+          return next;
+        });
+
+        settleTrades(mockPrices, forcedTrendRef.current);
+      } catch (err) {
+        console.error('Market sync error', err);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [settleTrades]);
+
+  // 3. Ensure any newly-selected asset has a price
+  useEffect(() => {
+    if (!activeAsset?.symbol) return;
+    const sym = activeAsset.symbol;
+    if (!currentPricesRef.current[sym]) {
+      const base = getBasePrice(sym);
+      currentPricesRef.current[sym] = base;
+      setLivePrices((prev) => ({
+        ...prev,
+        [sym]: { price: base, change: 0 },
+      }));
+    }
+  }, [activeAsset]);
+
+  // 4. Wallet sync - pulls commands from admin
+  useEffect(() => {
+    const walletInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/wallet', { cache: 'no-store' });
+        const { commands } = await res.json();
+        
+        if (commands && commands.length > 0) {
+          commands.forEach((cmd: any) => {
+            useTerminalStore.getState().adjustBalance(cmd.amount, cmd.action);
+            fetch(`/api/wallet?id=${cmd.id}`, { method: 'PATCH' });
+          });
+        }
+      } catch (err) {}
+    }, 2000);
+    return () => clearInterval(walletInterval);
+  }, []);
+
+  // 5. Load balance from Supabase and keep it in sync
+  useEffect(() => {
+    const loadBalance = async () => {
+      try {
+        const res = await fetch('/api/wallet/balance', { cache: 'no-store' });
+        const { balance } = await res.json();
+        if (typeof balance === 'number') {
+          useTerminalStore.setState({ ba

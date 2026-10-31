@@ -1,0 +1,965 @@
+﻿t AuthModal: React.FC = () => {
+  const { sidebarTab, setSidebarTab } = useTerminalStore();
+
+  // Tabs that trigger the modal overlay
+  const restrictedTabs = ['profile', 'market', 'activities', 'chat', 'registration'];
+  const isOpen = restrictedTabs.includes(sidebarTab);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+      <div className="bg-[#1D2232] border border-[#30374B] rounded-xl w-full max-w-md p-6 shadow-2xl flex flex-col items-center text-center relative animate-in fade-in zoom-in-95 duration-150">
+        
+        {/* Icon Header */}
+        <div className="w-12 h-12 rounded-full bg-[#2A3044] border border-[#30374B] flex items-center justify-center text-[#477EB9] mb-4 shadow">
+          <Lock size={22} />
+        </div>
+
+        {/* Message Text matching reference */}
+        <p className="text-sm text-[#F4F6FF] leading-relaxed mb-6 px-2">
+          This section is available to registered users only. Complete account registration to start trading and earning real money.
+        </p>
+
+        {/* Action Buttons: Registration & Sign In */}
+        <div className="grid grid-cols-2 gap-3 w-full mb-5">
+          <button
+            onClick={() => {
+              // Placeholder for registration link/action
+              alert('Registration link integration point');
+            }}
+            className="bg-[#2EAE49] hover:bg-[#25933c] text-white font-bold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow transition active:scale-95"
+          >
+            <UserPlus size={16} />
+            <span>Registration</span>
+          </button>
+
+          <button
+            onClick={() => {
+              // Placeholder for sign in link/action
+              alert('Sign In link integration point');
+            }}
+            className="bg-[#2A3044] hover:bg-[#30374B] border border-[#30374B] text-[#F4F6FF] font-bold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow transition active:scale-95"
+          >
+            <LogIn size={16} />
+            <span>Sign In</span>
+          </button>
+        </div>
+
+        {/* Continue Demo Trading Button */}
+        <button
+          onClick={() => setSidebarTab('trading')}
+          className="text-xs font-semibold text-[#49A6D8] hover:underline transition"
+        >
+          Continue demo trading
+        </button>
+
+      </div>
+    </div>
+  );
+};
+
+===== FILE: components\terminal\header.tsx =====
+'use client';
+
+import React from 'react';
+import Image from 'next/image';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import { RotateCcw, User, Star, Gift, Wallet } from 'lucide-react';
+
+export const Header: React.FC = () => {
+  const { balance, resetDemo } = useTerminalStore();
+
+  return (
+    <header className="h-[var(--header-height)] bg-[#1D2030] border-b border-[#30374B] flex items-center justify-between px-4 z-20 select-none">
+      {/* Brand Logo & Favorite Star */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Logo image (file lives at public/nova-logo.png) */}
+<Image
+  src="/icon.png"
+  alt="NOVA"
+  width={140}
+  height={120}
+  className="w-[140px] h-auto object-contain"
+  priority
+/>
+          
+        </div>
+        <button title="Favorite Platform" className="text-[#68758F] hover:text-[#FFC107] transition ml-1">
+          <Star size={16} />
+        </button>
+      </div>
+
+      {/* Center Promotional Widget */}
+      <div className="hidden lg:flex items-center gap-3 bg-[#202536] border border-[#30374B] rounded-lg px-3 py-1.5 text-xs shadow-inner">
+        <div className="w-6 h-6 rounded bg-[#477EB9]/20 flex items-center justify-center text-[#477EB9]">
+          <Gift size={15} />
+        </div>
+        <div className="leading-tight">
+          <span className="font-bold text-[#F4F6FF] text-[11px] block">GET 50% BONUS</span>
+          <span className="text-[9px] text-[#91A0BD]">Educational Trading Simulator</span>
+        </div>
+      </div>
+
+      {/* Right Balance, Top Up & Profile */}
+      <div className="flex items-center gap-3">
+        {/* Account Selector */}
+        <div className="bg-[#202536] border border-[#30374B] rounded-lg px-3 py-1 flex items-center gap-3">
+          <div>
+            <span className="text-[9px] text-[#91A0BD] uppercase font-bold block leading-none">
+              QT DEMO â€¢ USD
+            </span>
+            <span className="text-sm font-extrabold text-[#F4F6FF] tracking-wide">
+              ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              if (confirm('Reset demo balance to $50,000.00?')) {
+                resetDemo();
+              }
+            }}
+            title="Reset Demo Balance"
+            className="p-1 bg-[#2A3044] hover:bg-[#30374B] text-[#91A0BD] hover:text-white rounded transition"
+          >
+            <RotateCcw size={13} />
+          </button>
+        </div>
+
+        {/* Top Up Button */}
+        <button className="bg-[#2EAE49] hover:bg-[#25933c] text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition active:scale-95">
+          <Wallet size={14} />
+          <span>TOP UP</span>
+        </button>
+
+        {/* User Profile Avatar */}
+        <div className="w-8 h-8 rounded-full bg-[#2A3044] border border-[#30374B] flex items-center justify-center text-[#F4F6FF] cursor-pointer hover:border-[#477EB9] transition">
+          <User size={16} />
+        </div>
+      </div>
+    </header>
+  );
+};
+
+===== FILE: components\terminal\left-nav.tsx =====
+'use client';
+
+import React from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import { LineChart, Wallet, User, Globe, Activity, MessageSquare, HelpCircle, UserPlus, Gift } from 'lucide-react';
+
+const navItems = [
+  { id: 'trading', label: 'Trading', icon: LineChart },
+  { id: 'finance', label: 'Finance', icon: Wallet },
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'market', label: 'Market', icon: Globe },
+  { id: 'activities', label: 'Activities', icon: Activity },
+  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'help', label: 'Help', icon: HelpCircle },
+  { id: 'registration', label: 'Register', icon: UserPlus },
+];
+
+export const LeftNav: React.FC = () => {
+  const { sidebarTab, setSidebarTab } = useTerminalStore();
+
+  return (
+    <aside className="w-[90px] bg-[var(--sidebar-bg)] border-r border-[var(--border-color)] flex flex-col items-center py-4 justify-between select-none z-10">
+      <div className="flex flex-col gap-1 w-full px-2">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = sidebarTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setSidebarTab(item.id)}
+              className={`flex flex-col items-center justify-center py-2.5 rounded-lg transition group relative ${
+                isActive ? 'bg-[#2A3044] text-[#49A6D8]' : 'text-[#91A0BD] hover:bg-[#2A3044]/50 hover:text-[#F4F6FF]'
+              }`}
+            >
+              <Icon size={20} className={isActive ? 'text-[#49A6D8]' : 'text-[#91A0BD] group-hover:text-[#F4F6FF]'} />
+              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+              {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-[#49A6D8] rounded-r"></div>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Daily Bonus Widget */}
+      <div className="w-[74px] bg-[#2A3044]/60 border border-[#30374B] rounded-lg p-2 text-center flex flex-col items-center cursor-pointer hover:border-[#477EB9] transition">
+        <Gift size={18} className="text-[#2EAE49] mb-1" />
+        <span className="text-[9px] text-[#91A0BD] leading-tight">Daily Bonus</span>
+      </div>
+    </aside>
+  );
+};
+
+===== FILE: components\terminal\live-price-chart.tsx =====
+'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
+import { priceToY, timestampToX } from '@/lib/chart/chart-coordinates';
+import { Asset, TradePosition } from '@/lib/store/terminal-store';
+import { AssetFlag } from './asset-flag';
+import { Settings, BarChart2, Layers, Clock, ChevronDown } from 'lucide-react';
+
+interface LivePriceChartProps {
+  asset: Asset;
+  openedTrades: TradePosition[];
+  durationSeconds: number;
+  onOpenAssetSelector: () => void;
+  currentPrice: number;
+}
+
+type PricePoint = { price: number; timestamp: number };
+
+export const LivePriceChart: React.FC<LivePriceChartProps> = ({
+  asset,
+  openedTrades,
+  durationSeconds,
+  onOpenAssetSelector,
+  currentPrice,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  
+  const historyRef = useRef<{ symbol: string; points: PricePoint[] }>({
+    symbol: asset.symbol,
+    points: [],
+  });
+
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted || !currentPrice) return;
+
+    if (historyRef.current.symbol !== asset.symbol) {
+      historyRef.current = { symbol: asset.symbol, points: [] };
+    }
+
+    const now = Date.now();
+    const points = historyRef.current.points;
+
+    if (points.length === 0) {
+      const seed = Array.from({ length: 100 }).map((_, i) => ({
+        price: currentPrice,
+        timestamp: now - (100 - i) * 100,
+      }));
+      historyRef.current.points = seed;
+    }
+
+    historyRef.current.points.push({ price: currentPrice, timestamp: now });
+
+    if (historyRef.current.points.length > 1200) {
+      historyRef.current.points = historyRef.current.points.slice(-1200);
+    }
+  }, [currentPrice, asset.symbol, isMounted]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+
+    const render = () => {
+      const container = containerRef.current;
+      if (!container || !canvas) return;
+      if (!currentPrice) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+
+      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+      }
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      const paddingRight = 65;
+      const paddingBottom = 30;
+      const plotWidth = width - paddingRight;
+      const plotHeight = height - paddingBottom;
+
+      // 1. Draw Background Image (The Mountain)
+      // We use the faint style like PocketOption
+      ctx.globalAlpha = 0.05; // Very faint
+      const img = new Image();
+      img.src = '/chart-bg.png'; // Make sure this image is in your public folder!
+      
+      // Draw a solid dark background first, then overlay the image
+      ctx.fillStyle = '#171A2B';
+      ctx.fillRect(0, 0, width, height);
+      
+      if (img.complete) {
+        ctx.drawImage(img, 0, 0, plotWidth, plotHeight);
+      }
+      ctx.globalAlpha = 1.0;
+
+      const points = historyRef.current.points;
+      if (points.length < 2) {
+        ctx.restore();
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+
+      const now = Date.now();
+      const visibleWindowMs = 30 * 1000; // 30 seconds
+      const endTime = now + 3000;
+      const startTime = endTime - visibleWindowMs;
+
+      const visibleHistory = points.filter(pt => pt.timestamp >= startTime);
+
+      if (visibleHistory.length === 0) {
+        ctx.restore();
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+
+      let minPrice = Infinity;
+      let maxPrice = -Infinity;
+      visibleHistory.forEach(pt => {
+        if (pt.price < minPrice) minPrice = pt.price;
+        if (pt.price > maxPrice) maxPrice = pt.price;
+      });
+
+      if (currentPrice < minPrice) minPrice = currentPrice;
+      if (currentPrice > maxPrice) maxPrice = currentPrice;
+
+      const padding = (maxPrice - minPrice) * 0.15 || currentPrice * 0.0001;
+      minPrice -= padding;
+      maxPrice += padding;
+
+      // 2. Draw a Subtle Grid (like PocketOption)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'; // Very faint
+      ctx.lineWidth = 1;
+      const priceSteps = 7;
+      for (let i = 0; i <= priceSteps; i++) {
+        const y = (plotHeight / priceSteps) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, Math.floor(y) + 0.5);
+        ctx.lineTo(plotWidth, Math.floor(y) + 0.5);
+        ctx.stroke();
+      }
+
+      const timeSteps = 8;
+      for (let i = 0; i <= timeSteps; i++) {
+        const x = (plotWidth / timeSteps) * i;
+        ctx.beginPath();
+        ctx.moveTo(Math.floor(x) + 0.5, 0);
+        ctx.lineTo(Math.floor(x) + 0.5, plotHeight);
+        ctx.stroke();
+      }
+
+      // 3. Draw the Line with a Bright Glow
+      ctx.beginPath();
+      let lastX = 0;
+      let lastY = 0;
+      let firstX = 0;
+
+      visibleHistory.forEach((pt, index) => {
+        const x = timestampToX(pt.timestamp, startTime, endTime, plotWidth);
+        const y = priceToY(pt.price, minPrice, maxPrice, plotHeight);
+        if (index === 0) {
+          ctx.moveTo(x, y);
+          firstX = x;
+        } else {
+          ctx.lineTo(x, y);
+        }
+        if (index === visibleHistory.length - 1) {
+          lastX = x;
+          lastY = y;
+        }
+      });
+
+      // Area Fill
+      ctx.save();
+      ctx.lineTo(lastX, plotHeight);
+      ctx.lineTo(firstX, plotHeight);
+      ctx.closePath();
+      const gradient = ctx.createLinearGradient(0, 0, 0, plotHeight);
+      gradient.addColorStop(0, 'rgba(0, 229, 255, 0.2)'); // Cyan glow
+      gradient.addColorStop(1, 'rgba(0, 229, 255, 0.0)');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      ctx.restore();
+
+      // Stroke Line
+      ctx.beginPath();
+      visibleHistory.forEach((pt, index) => {
+        const x = timestampToX(pt.timestamp, startTime, endTime, plotWidth);
+        const y = priceToY(pt.price, minPrice, maxPrice, plotHeight);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#00E5FF'; // Bright Cyan
+      ctx.lineWidth = 2; 
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'rgba(0, 229, 255, 0.6)'; // Add glow!
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+      
+      // Reset glow for other drawings
+      ctx.shadowBlur = 0;
+
+      // 4. The Glowing End Node
+      if (lastX && lastY) {
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#00E5FF';
+        ctx.fill();
+        
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 8, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Dashed Current Price Line
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.3)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, lastY);
+      ctx.lineTo(plotWidth, lastY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Expiry Marker
+      const expiryTime = now + durationSeconds * 1000;
+      const expiryX = timestampToX(expiryTime, startTime, endTime, plotWidth);
+      if (expiryX > 0 && expiryX < plotWidth) {
+        ctx.strokeStyle = 'rgba(255, 50, 50, 0.6)'; // Red expiry line
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(expiryX, 0);
+        ctx.lineTo(expiryX, plotHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Right Scale
+      ctx.fillStyle = '#1D2030';
+      ctx.fillRect(plotWidth, 0, paddingRight, height);
+      ctx.strokeStyle = '#2A3044';
+      ctx.beginPath();
+      ctx.moveTo(plotWidth, 0);
+      ctx.lineTo(plotWidth, height);
+      ctx.stroke();
+
+      ctx.fillStyle = '#91A0BD';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      for (let i = 0; i <= priceSteps; i++) {
+        const y = (plotHeight / priceSteps) * i;
+        const priceVal = maxPrice - (i / priceSteps) * (maxPrice - minPrice);
+        ctx.fillText(priceVal.toFixed(asset.decimals), plotWidth + 6, y + 3);
+      }
+
+      // Current Price Badge
+      ctx.fillStyle = '#1D2030'; // Dark bg
+      ctx.fillRect(plotWidth, lastY - 10, paddingRight, 20);
+      
+      // Price text
+      ctx.fillStyle = '#00E5FF';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(currentPrice.toFixed(asset.decimals), plotWidth + 6, lastY + 3);
+
+      // Bottom X-Axis Scale
+      ctx.fillStyle = '#1D2030';
+      ctx.fillRect(0, plotHeight, width, paddingBottom);
+      ctx.strokeStyle = '#2A3044';
+      ctx.beginPath();
+      ctx.moveTo(0, plotHeight);
+      ctx.lineTo(width, plotHeight);
+      ctx.stroke();
+
+      ctx.fillStyle = '#68758F';
+      ctx.font = '10px sans-serif';
+      for (let i = 0; i <= timeSteps; i++) {
+        const x = (plotWidth / timeSteps) * i;
+        const tVal = new Date(startTime + (i / timeSteps) * visibleWindowMs);
+        ctx.fillText(tVal.toTimeString().substring(0, 8), x - 18, plotHeight + 18);
+      }
+
+      ctx.restore();
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [asset, currentPrice, durationSeconds, openedTrades, isMounted]);
+
+  return (
+    <div ref={containerRef} className="relative flex-1 h-full w-full bg-[#171A2B] overflow-hidden select-none">
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-[#202536]/90 border border-[#30374B] rounded-lg px-2.5 py-1.5 shadow-md">
+        <button onClick={onOpenAssetSelector} className="flex items-center gap-2 text-xs font-bold text-[#F4F6FF] hover:opacity-80 transition">
+          <AssetFlag symbol={asset.symbol} size="sm" />
+          <span>{asset.symbol}</span>
+          <ChevronDown size={14} className="text-[#91A0BD]" />
+        </button>
+        <div className="h-4 w-[1px] bg-[#30374B]"></div>
+        <button className="p-1 text-[#91A0BD] hover:text-white"><BarChart2 size={15} /></button>
+        <button className="p-1 text-[#91A0BD] hover:text-white"><Layers size={15} /></button>
+        <button className="p-1 text-[#91A0BD] hover:text-white"><Settings size={15} /></button>
+      </div>
+
+      <div className="absolute bottom-10 left-3 z-10 bg-[#202536] border border-[#30374B] text-[11px] font-bold text-[#91A0BD] px-2 py-1 rounded cursor-pointer hover:text-white transition">
+        S30
+      </div>
+
+      <div className="absolute top-3 right-20 z-10 bg-[#202536]/90 text-[10px] text-[#91A0BD] px-2 py-1 rounded border border-[#30374B] flex items-center gap-1">
+        <Clock size={12} className="text-[#F3332D]" />
+        <span>Expiration time: {durationSeconds}s</span>
+      </div>
+
+      <canvas ref={canvasRef} className="block w-full h-full cursor-crosshair" />
+    </div>
+  );
+};
+
+===== FILE: components\terminal\right-utility.tsx =====
+'use client';
+
+import React from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import { BarChart3, Radio, Users, Zap, Clock, Keyboard } from 'lucide-react';
+
+const utilityItems = [
+  { id: 'trades', label: 'Trades', icon: BarChart3 },
+  { id: 'signals', label: 'Signals', icon: Radio },
+  { id: 'social', label: 'Social', icon: Users },
+  { id: 'express', label: 'Express', icon: Zap },
+  { id: 'pending', label: 'Pending', icon: Clock },
+  { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
+];
+
+export const RightUtility: React.FC = () => {
+  const { utilityTab, setUtilityTab } = useTerminalStore();
+
+  return (
+    <aside className="w-[90px] bg-[var(--sidebar-bg)] border-l border-[var(--border-color)] flex flex-col items-center py-4 select-none z-10">
+      <div className="flex flex-col gap-1 w-full px-2">
+        {utilityItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = utilityTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setUtilityTab(item.id)}
+              className={`flex flex-col items-center justify-center py-3 rounded-lg transition group relative ${
+                isActive ? 'bg-[#2A3044] text-[#49A6D8]' : 'text-[#91A0BD] hover:bg-[#2A3044]/50 hover:text-[#F4F6FF]'
+              }`}
+            >
+              <Icon size={20} />
+              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+              {isActive && <div className="absolute right-0 top-2 bottom-2 w-1 bg-[#49A6D8] rounded-l"></div>}
+            </button>
+          );
+        })}
+      </div>
+    </aside>
+  );
+};
+
+===== FILE: components\terminal\trade-closed-modal.tsx =====
+'use client';
+
+import React from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import TradeInvoice from './TradeInvoice';
+
+export const TradeClosedModal: React.FC = () => {
+  const { latestClosedTrade, clearLatestClosedTrade, setActiveTab } = useTerminalStore();
+
+  // If no trade has closed, hide the modal
+  if (!latestClosedTrade) return null;
+
+  const trade = latestClosedTrade;
+  
+  const isWin = trade.status === 'WON';
+  const profitAmount =
+    trade.profit !== undefined
+      ? trade.profit
+      : isWin
+      ? Number((trade.stake * (trade.payoutRate / 100)).toFixed(2))
+      : -trade.stake;
+
+  const durationSec = Math.max(1, Math.round((trade.expiryTime - trade.entryTime) / 1000));
+  const baseCurrency = trade.assetSymbol.split('/')[0] || 'USD';
+
+  return (
+    <TradeInvoice
+      asset={trade.assetSymbol}
+      base={baseCurrency}
+      amount={trade.stake}
+      profit={profitAmount}
+      direction={trade.direction}
+      duration={durationSec}
+      entryPrice={trade.entryPrice.toString()}
+      exitPrice={(trade.settlementPrice || trade.currentPrice).toString()}
+      status={trade.status}
+      onClose={clearLatestClosedTrade}
+      onNewTrade={clearLatestClosedTrade}
+      onViewTrades={() => {
+        clearLatestClosedTrade();
+        setActiveTab('closed'); // Jumps to the closed trades tab in the panel
+      }}
+    />
+  );
+};
+
+export default TradeClosedModal;
+
+===== FILE: components\terminal\trade-controls.tsx =====
+'use client';
+
+import React from 'react';
+import { useTerminalStore, executeTrade } from '@/lib/store/terminal-store';
+import { Clock, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+
+export const TradeControls: React.FC<{ currentPrice: number }> = ({ currentPrice }) => {
+  const { durationSeconds, setDurationSeconds, investment, setInvestment, activeAsset, balance } = useTerminalStore();
+
+  const durations = [5, 15, 30, 60, 300];
+  const amounts = [5, 10, 25, 50, 100];
+
+  const potentialProfit = Number((investment * (activeAsset.payout / 100)).toFixed(2));
+
+  return (
+    <div className="w-full lg:w-[170px] bg-[var(--panel-bg)] border-t lg:border-t-0 lg:border-r border-[var(--border-color)] flex flex-row lg:flex-col p-3 justify-between select-none shrink-0 gap-3 lg:gap-0">
+      <div className="flex flex-row lg:flex-col gap-3 lg:gap-4 flex-1">
+        {/* Time / Expiry Section */}
+        <div className="flex-1 lg:flex-none">
+          <label className="text-[10px] text-[#91A0BD] uppercase font-semibold flex items-center gap-1 mb-1">
+            <Clock size={12} /> Time
+          </label>
+          <div className="flex items-center bg-[#1B1E2C] border border-[#30374B] rounded px-2 py-1">
+            <input
+              type="number"
+              value={durationSeconds}
+              onChange={(e) => setDurationSeconds(Math.max(5, Number(e.target.value)))}
+              className="w-full bg-transparent text-xs lg:text-sm font-bold text-[#F4F6FF] focus:outline-none"
+            />
+            <span className="text-xs text-[#91A0BD]">s</span>
+          </div>
+          <div className="hidden lg:grid grid-cols-5 gap-1 mt-1.5">
+            {durations.map((d) => (
+              <button
+                key={d}
+                onClick={() => setDurationSeconds(d)}
+                className={`text-[10px] py-1 rounded transition font-medium ${
+                  durationSeconds === d ? 'bg-[#477EB9] text-white' : 'bg-[#2A3044] text-[#91A0BD] hover:text-white'
+                }`}
+              >
+                {d >= 60 ? `${d / 60}m` : `${d}s`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Investment Amount Section */}
+        <div className="flex-1 lg:flex-none">
+          <label className="text-[10px] text-[#91A0BD] uppercase font-semibold flex items-center gap-1 mb-1">
+            <DollarSign size={12} /> Investment
+          </label>
+          <div className="flex items-center bg-[#1B1E2C] border border-[#30374B] rounded px-2 py-1">
+            <span className="text-xs text-[#91A0BD] mr-1">$</span>
+            <input
+              type="number"
+              value={investment}
+              onChange={(e) => setInvestment(Math.max(1, Number(e.target.value)))}
+              className="w-full bg-transparent text-xs lg:text-sm font-bold text-[#F4F6FF] focus:outline-none"
+            />
+          </div>
+          <div className="hidden lg:grid grid-cols-5 gap-1 mt-1.5">
+            {amounts.map((a) => (
+              <button
+                key={a}
+                onClick={() => setInvestment(a)}
+                className={`text-[10px] py-1 rounded transition font-medium ${
+                  investment === a ? 'bg-[#477EB9] text-white' : 'bg-[#2A3044] text-[#91A0BD] hover:text-white'
+                }`}
+              >
+                ${a}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Payout Summary */}
+        <div className="hidden lg:block bg-[#1B1E2C] border border-[#30374B] rounded p-2 text-xs">
+          <div className="flex justify-between text-[#91A0BD] mb-1">
+            <span>Payout:</span>
+            <span className="font-bold text-[#2EAE49]">+{activeAsset.payout}%</span>
+          </div>
+          <div className="flex justify-between text-[#91A0BD]">
+            <span>Profit:</span>
+            <span className="font-bold text-[#F4F6FF]">+${potentialProfit.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons: UP / DOWN */}
+      <div className="flex flex-row lg:flex-col gap-2 shrink-0">
+        <button
+          onClick={() => executeTrade('UP', currentPrice)}
+          disabled={balance < investment}
+          className="flex-1 lg:flex-none h-10 lg:h-12 bg-[#2EAE49] hover:bg-[#25933c] disabled:opacity-50 text-white font-bold rounded flex flex-col items-center justify-center shadow-lg transition active:scale-95"
+        >
+          <div className="flex items-center gap-1 text-xs lg:text-sm">
+            <TrendingUp size={15} /> HIGHER
+          </div>
+          <span className="text-[9px] lg:text-[10px] opacity-90">+${potentialProfit.toFixed(2)}</span>
+        </button>
+
+        <button
+          onClick={() => executeTrade('DOWN', currentPrice)}
+          disabled={balance < investment}
+          className="flex-1 lg:flex-none h-10 lg:h-12 bg-[#F3332D] hover:bg-[#d42a25] disabled:opacity-50 text-white font-bold rounded flex flex-col items-center justify-center shadow-lg transition active:scale-95"
+        >
+          <div className="flex items-center gap-1 text-xs lg:text-sm">
+            <TrendingDown size={15} /> LOWER
+          </div>
+          <span className="text-[9px] lg:text-[10px] opacity-90">+${potentialProfit.toFixed(2)}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+===== FILE: components\terminal\TradeInvoice.tsx =====
+// components/terminal/TradeInvoice.tsx
+"use client";
+
+import React, { useRef } from "react";
+import {
+  Trophy,
+  X,
+  ArrowUp,
+  ArrowDown,
+  TrendingUp,
+  TrendingDown,
+  History,
+  Clock,
+  Download,
+  FileText,
+} from "lucide-react";
+import html2canvas from "html2canvas";
+
+function formatMoney(value: number) {
+  return `$${Math.abs(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+const FLAGS: Record<string, [string, string]> = {
+  EUR: ["#0B3FA8", "#FFCC00"],
+  GBP: ["#012169", "#C8102E"],
+  AUD: ["#012169", "#FFCC00"],
+  USD: ["#3C3B6E", "#B22234"],
+  JPY: ["#F4F6FB", "#BC002D"],
+  XAU: ["#F2C94C", "#B8860B"],
+};
+
+function FlagIcon({ code, size = 20 }: { code: string; size?: number }) {
+  const [top, bottom] = FLAGS[code] ?? ["#1B3A66", "#0A1B33"];
+  return (
+    <span
+      className="ti-flag"
+      style={{
+        width: size,
+        height: size,
+        background: `linear-gradient(180deg, ${top} 0 55%, ${bottom} 55% 100%)`,
+        fontSize: Math.max(6, size * 0.36),
+      }}
+      aria-hidden
+    >
+      {code === "XAU" ? "" : code}
+    </span>
+  );
+}
+
+function SuccessHeader({ onClose, status }: { onClose: () => void, status: string }) {
+  const isWin = status === 'WON';
+  const isTie = status === 'TIE';
+  
+  return (
+    <div className="ti-success-header">
+      <button className="ti-close" type="button" onClick={onClose} aria-label="Close">
+        <X size={18} />
+      </button>
+
+      <div className={`ti-emblem ${isTie ? 'tie' : !isWin ? 'loss' : ''}`}>
+        <div className="ti-emblem-core">
+          {isWin ? <Trophy size={36} strokeWidth={2} /> : isTie ? <Clock size={36} strokeWidth={2} /> : <X size={36} strokeWidth={2} />}
+        </div>
+      </div>
+
+      <h2 className="ti-title">Trade Closed</h2>
+      <p className="ti-sub">
+        {isWin ? "Your trade was successful!" : isTie ? "Your trade resulted in a tie." : "Trade closed with loss!"}
+      </p>
+    </div>
+  );
+}
+
+export default function TradeInvoice({
+  asset = "AUD/USD",
+  base = "AUD",
+  amount = 100,
+  profit = 92,
+  direction = "UP",
+  duration = 60,
+  entryPrice = "0.64976",
+  exitPrice = "0.65032",
+  status = "WON",
+  onClose = () => {},
+  onNewTrade = () => {},
+  onViewTrades = () => {},
+}: {
+  asset?: string;
+  base?: string;
+  amount?: number;
+  profit?: number;
+  direction?: "UP" | "DOWN";
+  duration?: number;
+  entryPrice?: string;
+  exitPrice?: string;
+  status?: "WON" | "LOST" | "TIE";
+  onClose?: () => void;
+  onNewTrade?: () => void;
+  onViewTrades?: () => void;
+}) {
+  const receiptRef = useRef<HTMLDivElement>(null);
+  
+  const isWin = status === "WON";
+  const isTie = status === "TIE";
+  
+  const themeColor = isWin ? "#00e59b" : isTie ? "#E2B93B" : "#ff3d57";
+  const themeBg = isWin ? "rgba(0, 229, 155, 0.15)" : isTie ? "rgba(226, 185, 59, 0.15)" : "rgba(255, 61, 87, 0.15)";
+  const themeBorder = isWin ? "rgba(0, 229, 155, 0.3)" : isTie ? "rgba(226, 185, 59, 0.3)" : "rgba(255, 61, 87, 0.3)";
+
+  // Download PNG Function
+  const handleDownloadPNG = async () => {
+    if (!receiptRef.current) return;
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: "#040812", // Solid background for the download so it's not transparent
+        scale: 3, // Higher scale = sharper image
+        useCORS: true, 
+        allowTaint: true,
+      });
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Receipt_${asset.replace('/', '_')}_${Date.now()}.png`;
+      a.click();
+    } catch (err) {
+      console.error("Failed to generate image", err);
+    }
+  };
+
+  return (
+    <>
+      <style>{`
+        /* Overlay: Blurred background behind the modal */
+        .ti-overlay { 
+          position: fixed; inset: 0; z-index: 100; 
+          background: rgba(4, 8, 18, 0.7); 
+          backdrop-filter: blur(12px); 
+          -webkit-backdrop-filter: blur(12px);
+          display: flex; align-items: center; justify-content: center; 
+          padding: 20px; 
+        }
+
+        /* The Receipt Card: Translucent and glassy */
+        .ti-receipt { 
+          position: relative; width: 420px; max-width: 100%; 
+          display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; 
+          
+          /* Glassmorphism */
+          background: rgba(13, 21, 38, 0.85); 
+          border: 1px solid rgba(255, 255, 255, 0.1); 
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+          border-left: 1px solid rgba(255, 255, 255, 0.15);
+          box-shadow: 0 30px 80px rgba(0,0,0,0.8), 0 0 40px ${themeBg}; 
+          
+          margin: auto; color: #f3f6ff; 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+          -webkit-font-smoothing: antialiased;
+        }
+
+        /* Subtle glow inside the card */
+        .ti-receipt::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 150px;
+          background: radial-gradient(ellipse at top, ${themeBg}, transparent 70%);
+          pointer-events: none; z-index: 0;
+        }
+
+        .ti-body { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 20px; padding: 30px; }
+        
+        /* Logo */
+        .ti-logo { position: absolute; top: 24px; left: 24px; height: 24px; width: auto; opacity: 0.9; }
+
+        /* Success Header */
+        .ti-success-header { position: relative; text-align: center; padding-top: 10px; }
+        .ti-close { position: absolute; top: 0; right: 0; width: 32px; height: 32px; display: grid; place-items: center; border: none; border-radius: 50%; background: rgba(255,255,255,0.05); color: #8ea8cc; cursor: pointer; transition: 0.2s; }
+        .ti-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        
+        .ti-emblem { position: relative; width: 80px; height: 80px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, ${themeBg}, transparent 70%); }
+        .ti-emblem-core { position: relative; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; color: ${themeColor}; background: rgba(13, 21, 38, 0.8); border: 2px solid ${themeColor}; box-shadow: 0 0 20px ${themeBg}; }
+        
+        .ti-title { margin: 16px 0 4px; font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+        .ti-sub { margin: 0; font-size: 14px; color: #8ea8cc; }
+        
+        /* Asset Details Card */
+        .ti-card { border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0, 0, 0, 0.3); padding: 18px 20px; }
+        .ti-pair-row { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; }
+        .ti-pair-left { display: flex; align-items: center; gap: 12px; }
+        .ti-pair-name { font-size: 16px; font-weight: 700; color: #fff; }
+        .ti-pair-dir { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; margin-top: 2px; }
+        .ti-pair-dir.up { color: #00e59b; } .ti-pair-dir.down { color: #f6465d; }
+        .ti-amount { font-size: 16px; font-weight: 700; color: #fff; }
+        .ti-amount-label { font-size: 11px; color: #8ea8cc; }
+        
+        .ti-card-divider { height: 1px; background: rgba(255, 255, 255, 0.08); margin: 0 -20px; }
+        .ti-details-row { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: stretch; }
+        .ti-detail-divider { background: rgba(255, 255, 255, 0.08); }
+        .ti-detail-cell { display: flex; flex-direction: column; gap: 4px; padding: 16px 0; }
+        .ti-detail-cell:first-child { padding-right: 20px; } .ti-detail-cell:last-child { padding-left: 20px; }
+        .ti-detail-label { font-size: 11px; color: #8ea8cc; }
+        .ti-detail-value { font-size: 15px; font-weight: 600; color: #fff; font-family: monospace; }
+        .ti-result { color: ${themeColor}; font-weight: 700; font-family: inherit; }
+        
+        /* Profit Banner */
+        .ti-profit-banner { position: relative; display: flex; align-items: center; gap: 16px; padding: 20px; border-radius: 16px; overflow: hidden; border: 1px solid ${themeBorder}; background: ${themeBg}; }
+        .ti-profit-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: ${themeColor}; background: rgba(255,255,255,0.1); }
+        .ti-profit-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${themeColor}; opacity: 0.9; }
+        .ti-profit-value { font-size: 28px; font-weight: 800; color: ${themeColor}; line-height: 1; }
+        
+        /* Buttons */
+        .ti-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .ti-btn { height: 48px; border-radius: 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; border: none; }
+        .ti-btn-primary { background: linear-gradient(180deg, #2e8bff, #006bff); color: #fff; box-shadow: 0 4px 15px rgba(0, 107, 255, 0.4); }
+        .ti-btn-primary:hover { filter: brightness(1.1); }
+        .ti-btn-ghost { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
+        .ti-btn-ghost:hover { background: rgba(255, 255, 255, 0.1); }
+        
+        .ti-export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+        .ti-btn-export { height: 36px; border-radius: 10px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; background: t

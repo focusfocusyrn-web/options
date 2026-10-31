@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --app-bg: #1B1E2C;
+    --header-bg: #1D2030;
+    --sidebar-bg: #202536;
+    --chart-bg: #171A2B;
+    --panel-bg: #222637;
+    --panel-bg-hover: #2A3044;
+    --border-color: #30374B;
+    --text-primary: #F4F6FF;
+    --text-secondary: #91A0BD;
+    --text-muted: #68758F;
+    --accent-blue: #477EB9;
+    --chart-line: #416D9C;
+    --chart-fill: rgba(65, 109, 156, 0.25);
+    --chart-current: #49A6D8;
+    --positive-green: #2EAE49;
+    --negative-red: #F3332D;
+    --price-highlight: #3D6C9D;
+    --header-height: 60px;
+  }
+
+  body {
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+}

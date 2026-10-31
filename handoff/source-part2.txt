@@ -1,0 +1,855 @@
+﻿lance });
+        }
+      } catch (err) {
+        console.error('Failed to load balance', err);
+      }
+    };
+    
+    loadBalance();
+    const balanceInterval = setInterval(loadBalance, 3000);
+    return () => clearInterval(balanceInterval);
+  }, []);
+
+  // 6. Load trade receipts from Supabase and keep in sync
+  useEffect(() => {
+    const loadReceipts = async () => {
+      try {
+        const res = await fetch('/api/invoices', { cache: 'no-store' });
+        const { success, invoices } = await res.json();
+        if (success && invoices) {
+          const mappedReceipts = invoices.map((inv: any) => ({
+            receiptId: inv.receipt_id,
+            tradeId: inv.id,
+            timestamp: new Date(inv.issued_at).getTime(),
+            assetSymbol: inv.asset_symbol,
+            direction: inv.direction,
+            stake: Number(inv.stake),
+            entryPrice: Number(inv.entry_price),
+            settlementPrice: Number(inv.settlement_price),
+            profit: Number(inv.profit),
+            payoutRate: 92,
+            status: inv.status,
+            transactionHash: inv.transaction_hash,
+          }));
+
+          // Merge into Zustand (avoid losing live in-memory trades not yet flushed)
+          useTerminalStore.setState({ receipts: mappedReceipts });
+        }
+      } catch (err) {
+        console.error('Failed to load receipts', err);
+      }
+    };
+
+    loadReceipts();
+    const receiptsInterval = setInterval(loadReceipts, 5000);
+    return () => clearInterval(receiptsInterval);
+  }, []);
+
+  const currentPrice = livePrices[activeAsset.symbol]?.price ?? getBasePrice(activeAsset.symbol);
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--app-bg)] relative">
+      <Header />
+      <div className="bg-[#141724] border-b border-[#2B3348] px-4 py-1.5 flex items-center justify-between text-[11px] text-[#91A0BD] overflow-x-auto gap-4">
+        <div className="flex items-center gap-4 shrink-0 font-mono">
+          <span className="text-[10px] text-[#68758F] uppercase font-sans font-bold flex items-center gap-1">
+            <Activity size={12} className="text-[#2EAE49] animate-pulse" /> Live Market
+          </span>
+          {Object.entries(livePrices).map(([sym, item]) => (
+            <div key={sym} className="flex items-center gap-1.5">
+              <span className="font-bold text-white font-sans">{sym}:</span>
+              <span className="text-white">{item.price.toFixed(sym.includes('JPY') ? 3 : sym.includes('BTC') ? 2 : 5)}</span>
+              <span className={`text-[10px] font-bold flex items-center ${item.change >= 0 ? 'text-[#2EAE49]' : 'text-[#F3332D]'}`}>
+                {item.change >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                {item.change >= 0 ? '+' : ''}{item.change}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-1 w-full overflow-hidden h-[calc(100vh-var(--header-height))] relative">
+        <div className="hidden sm:flex"><LeftNav /></div>
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden w-full">
+          <div className="flex-1 flex h-[55%] lg:h-full overflow-hidden min-h-[250px]">
+            <LivePriceChart 
+              asset={activeAsset} 
+              openedTrades={openedTrades} 
+              durationSeconds={durationSeconds} 
+              onOpenAssetSelector={() => setIsAssetSelectorOpen(true)} 
+              currentPrice={currentPrice}
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row lg:flex-row h-[45%] lg:h-full shrink-0 overflow-y-auto lg:overflow-visible">
+            <TradeControls currentPrice={currentPrice} />
+            <TradesPanel />
+          </div>
+        </div>
+        <div className="hidden xl:flex"><RightUtility /></div>
+      </div>
+
+      <AssetSelector isOpen={isAssetSelectorOpen} onClose={() => setIsAssetSelectorOpen(false)} />
+      <TradeClosedModal />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+    </div>
+  );
+}
+
+===== FILE: app\globals.css =====
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --app-bg: #1B1E2C;
+    --header-bg: #1D2030;
+    --sidebar-bg: #202536;
+    --chart-bg: #171A2B;
+    --panel-bg: #222637;
+    --panel-bg-hover: #2A3044;
+    --border-color: #30374B;
+    --text-primary: #F4F6FF;
+    --text-secondary: #91A0BD;
+    --text-muted: #68758F;
+    --accent-blue: #477EB9;
+    --chart-line: #416D9C;
+    --chart-fill: rgba(65, 109, 156, 0.25);
+    --chart-current: #49A6D8;
+    --positive-green: #2EAE49;
+    --negative-red: #F3332D;
+    --price-highlight: #3D6C9D;
+    --header-height: 60px;
+  }
+
+  body {
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+}
+
+===== FILE: app\layout.tsx =====
+import '@/app/globals.css';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Pocket Options',
+  description: 'Educational Trading Simulator',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
+    </html>
+  );
+}
+
+===== FILE: app\page.tsx =====
+import { redirect } from 'next/navigation';
+
+export default function RootHomePage() {
+  // Automatically redirect from http://localhost:3000/ to the terminal route
+  redirect('/en/cabinet/deposit-step-1');
+}
+
+===== FILE: components\terminal\admin-dashboard.tsx =====
+'use client';
+
+import React, { useState } from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import {
+  ShieldAlert,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Lock,
+  X,
+  Play,
+  Pause,
+  RotateCcw,
+  Sliders,
+  CheckCircle2,
+  AlertTriangle,
+  Receipt,
+  UserCheck,
+} from 'lucide-react';
+
+export const AdminDashboardModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
+  isOpen,
+  onClose,
+}) => {
+  const {
+    balance,
+    adjustBalance,
+    setBalance,
+    marketControls,
+    updateMarketControls,
+    openedTrades,
+    forceSettleTrade,
+    clearTradeHistory,
+    receipts,
+    resetDemo,
+  } = useTerminalStore();
+
+  const [activeTab, setActiveTab] = useState<'market' | 'trades' | 'wallet' | 'receipts'>('market');
+  const [customBalanceInput, setCustomBalanceInput] = useState('');
+  const [balanceAdjustmentInput, setBalanceAdjustmentInput] = useState('1000');
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-[#121622] border border-[#2B3348] rounded-2xl w-full max-w-4xl h-[85vh] shadow-2xl flex flex-col overflow-hidden text-[#F4F6FF]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2B3348] bg-[#171C2B]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#F3332D]/20 border border-[#F3332D]/40 rounded-xl text-[#F3332D]">
+              <ShieldAlert size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold tracking-wide flex items-center gap-2">
+                ADMIN CONTROL CENTER
+                <span className="text-[10px] bg-[#2EAE49]/20 text-[#2EAE49] px-2 py-0.5 rounded-full border border-[#2EAE49]/30">
+                  LIVE OVERRIDE
+                </span>
+              </h2>
+              <p className="text-xs text-[#68758F]">
+                Market manipulation, risk parameters & user balance controls
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-[#68758F] hover:text-white hover:bg-[#202536] transition"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Navigation Bar */}
+        <div className="flex border-b border-[#2B3348] bg-[#141824] px-6 gap-2">
+          {[
+            { id: 'market', label: 'Market Controls', icon: Sliders },
+            { id: 'trades', label: `Active Positions (${openedTrades.length})`, icon: TrendingUp },
+            { id: 'wallet', label: 'Balance & Funds', icon: DollarSign },
+            { id: 'receipts', label: `Receipts (${receipts.length})`, icon: Receipt },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition border-b-2 ${
+                  isActive
+                    ? 'border-[#477EB9] text-[#477EB9] bg-[#1E2538]/50'
+                    : 'border-transparent text-[#68758F] hover:text-[#91A0BD]'
+                }`}
+              >
+                <Icon size={14} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* TAB 1: MARKET CONTROLS */}
+          {activeTab === 'market' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Rigging Mode */}
+              <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-[#91A0BD] uppercase tracking-wider">
+                    Trade Rigging Mode
+                  </h3>
+                  <span className="text-[10px] text-[#68758F]">Forces outcome on expiry</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'NEUTRAL', label: 'Neutral', color: 'bg-[#202536] text-white border-[#30374B]' },
+                    { id: 'ALWAYS_WIN', label: 'Force Win', color: 'bg-[#2EAE49]/20 text-[#2EAE49] border-[#2EAE49]/50' },
+                    { id: 'ALWAYS_LOSE', label: 'Force Loss', color: 'bg-[#F3332D]/20 text-[#F3332D] border-[#F3332D]/50' },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => updateMarketControls({ rigMode: mode.id as any })}
+                      className={`p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1 ${
+                        marketControls.rigMode === mode.id
+                          ? `${mode.color} ring-2 ring-white/20 shadow-lg`
+                          : 'bg-[#121622] border-[#252B3D] text-[#68758F] hover:text-white'
+                      }`}
+                    >
+                      {mode.id === 'ALWAYS_WIN' && <TrendingUp size={16} />}
+                      {mode.id === 'ALWAYS_LOSE' && <TrendingDown size={16} />}
+                      {mode.id === 'NEUTRAL' && <Sliders size={16} />}
+                      <span>{mode.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Market Pause & Reset */}
+              <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl p-5 space-y-4">
+                <h3 className="text-xs font-bold text-[#91A0BD] uppercase tracking-wider">
+                  Engine Status & Simulation Reset
+                </h3>
+
+                <div className="flex items-center justify-between bg-[#121622] p-3 rounded-xl border border-[#252B3D]">
+                  <div className="flex items-center gap-2">
+                    {marketControls.isPaused ? (
+                      <Pause className="text-[#E2B93B]" size={18} />
+                    ) : (
+                      <Play className="text-[#2EAE49]" size={18} />
+                    )}
+                    <span className="text-xs font-bold">
+                      {marketControls.isPaused ? 'Engine Paused' : 'Engine Running'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => updateMarketControls({ isPaused: !marketControls.isPaused })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      marketControls.isPaused
+                        ? 'bg-[#2EAE49] text-white'
+                        : 'bg-[#E2B93B] text-black'
+                    }`}
+                  >
+                    {marketControls.isPaused ? 'Resume' : 'Pause Engine'}
+                  </button>
+                </div>
+
+                <div className="pt-2 flex gap-2">
+                  <button
+                    onClick={resetDemo}
+                    className="flex-1 bg-[#202536] hover:bg-[#2B3348] border border-[#30374B] text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw size={14} /> Reset Terminal Demo
+                  </button>
+                  <button
+                    onClick={clearTradeHistory}
+                    className="flex-1 bg-[#202536] hover:bg-[#2B3348] border border-[#30374B] text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 text-[#F3332D]"
+                  >
+                    Clear History
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: ACTIVE TRADES OVERRIDE */}
+          {activeTab === 'trades' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-[#91A0BD] uppercase tracking-wider">
+                  Live Positions Direct Force Override
+                </h3>
+              </div>
+
+              {openedTrades.length === 0 ? (
+                <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl p-8 text-center text-[#68758F] text-xs font-medium">
+                  No open trades available to override. Open a trade in the terminal to manipulate it here.
+                </div>
+              ) : (
+                <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#121622] text-[#68758F] border-b border-[#2B3348]">
+                        <th className="p-3">Asset</th>
+                        <th className="p-3">Direction</th>
+                        <th className="p-3">Stake</th>
+                        <th className="p-3">Entry Price</th>
+                        <th className="p-3">Expiry In</th>
+                        <th className="p-3 text-right">Force Settlement</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#252B3D]">
+                      {openedTrades.map((t) => {
+                        const secondsLeft = Math.max(0, Math.ceil((t.expiryTime - Date.now()) / 1000));
+                        return (
+                          <tr key={t.id} className="hover:bg-[#1E2538]/50 transition">
+                            <td className="p-3 font-bold">{t.assetSymbol}</td>
+                            <td className="p-3">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  t.direction === 'UP' ? 'bg-[#2EAE49]/20 text-[#2EAE49]' : 'bg-[#F3332D]/20 text-[#F3332D]'
+                                }`}
+                              >
+                                {t.direction}
+                              </span>
+                            </td>
+                            <td className="p-3 font-semibold">${t.stake.toFixed(2)}</td>
+                            <td className="p-3 font-mono">{t.entryPrice}</td>
+                            <td className="p-3 font-mono text-[#E2B93B]">{secondsLeft}s</td>
+                            <td className="p-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => forceSettleTrade(t.id, 'WON')}
+                                  className="bg-[#2EAE49] hover:bg-[#25933c] text-white px-3 py-1 rounded font-bold text-[11px] transition shadow"
+                                >
+                                  Force WIN
+                                </button>
+                                <button
+                                  onClick={() => forceSettleTrade(t.id, 'LOST')}
+                                  className="bg-[#F3332D] hover:bg-[#d02722] text-white px-3 py-1 rounded font-bold text-[11px] transition shadow"
+                                >
+                                  Force LOSS
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: WALLET CONTROLS */}
+          {activeTab === 'wallet' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl p-5 space-y-4">
+                <h3 className="text-xs font-bold text-[#91A0BD] uppercase tracking-wider">
+                  Current Balance
+                </h3>
+                <div className="bg-[#121622] border border-[#2B3348] rounded-xl p-4 flex items-center justify-between">
+                  <span className="text-xs text-[#68758F]">Account Equity</span>
+                  <span className="text-2xl font-black text-[#2EAE49] font-mono">
+                    ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <label className="text-[11px] font-semibold text-[#91A0BD]">
+                    Quick Adjust Amount ($)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={balanceAdjustmentInput}
+                      onChange={(e) => setBalanceAdjustmentInput(e.target.value)}
+                      className="flex-1 bg-[#121622] border border-[#2B3348] rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-[#477EB9]"
+                    />
+                    <button
+                      onClick={() => adjustBalance(Number(balanceAdjustmentInput) || 0, 'ADD')}
+                      className="bg-[#2EAE49] hover:bg-[#25933c] text-white font-bold text-xs px-4 rounded-xl transition"
+                    >
+                      + Deposit
+                    </button>
+                    <button
+                      onClick={() => adjustBalance(Number(balanceAdjustmentInput) || 0, 'SUBTRACT')}
+                      className="bg-[#F3332D] hover:bg-[#d02722] text-white font-bold text-xs px-4 rounded-xl transition"
+                    >
+                      - Deduct
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl p-5 space-y-4">
+                <h3 className="text-xs font-bold text-[#91A0BD] uppercase tracking-wider">
+                  Set Exact Balance
+                </h3>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold text-[#91A0BD]">
+                    Override Total Balance ($)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="e.g. 100000"
+                      value={customBalanceInput}
+                      onChange={(e) => setCustomBalanceInput(e.target.value)}
+                      className="flex-1 bg-[#121622] border border-[#2B3348] rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-[#477EB9]"
+                    />
+                    <button
+                      onClick={() => {
+                        if (customBalanceInput) setBalance(Number(customBalanceInput));
+                      }}
+                      className="bg-[#477EB9] hover:bg-[#3b699a] text-white font-bold text-xs px-4 rounded-xl transition"
+                    >
+                      Set Balance
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: TRADE RECEIPTS & EDITABLE INVOICE GENERATOR */}
+          {activeTab === 'receipts' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-[#91A0BD] uppercase tracking-wider">
+                  Receipt Registry & Invoice Editor
+                </h3>
+                <span className="text-[10px] text-[#68758F]">
+                  Admins can edit any trade receipt parameters prior to downloading or printing
+                </span>
+              </div>
+
+              <div className="bg-[#181D2D] border border-[#2B3348] rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#121622] text-[#68758F] border-b border-[#2B3348]">
+                      <th className="p-3">Receipt ID</th>
+                      <th className="p-3">Asset</th>
+                      <th className="p-3">Outcome</th>
+                      <th className="p-3">Stake</th>
+                      <th className="p-3">Entry/Exit</th>
+                      <th className="p-3">Profit</th>
+                      <th className="p-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#252B3D]">
+                    {receipts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-[#68758F]">
+                          No completed trade receipts generated yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      receipts.map((r) => (
+                        <tr key={r.receiptId} className="hover:bg-[#1E2538]/50 transition">
+                          <td className="p-3 font-mono font-bold text-[#477EB9]">{r.receiptId}</td>
+                          <td className="p-3 font-bold">{r.assetSymbol}</td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                r.status === 'WON'
+                                  ? 'bg-[#2EAE49]/20 text-[#2EAE49]'
+                                  : 'bg-[#F3332D]/20 text-[#F3332D]'
+                              }`}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="p-3 font-semibold">${r.stake.toFixed(2)}</td>
+                          <td className="p-3 font-mono text-[11px]">
+                            {r.entryPrice} â†’ {r.settlementPrice}
+                          </td>
+                          <td className={`p-3 font-bold ${r.profit >= 0 ? 'text-[#2EAE49]' : 'text-[#F3332D]'}`}>
+                            {r.profit >= 0 ? `+$${r.profit.toFixed(2)}` : `-$${Math.abs(r.profit).toFixed(2)}`}
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => {
+                                  const text = `NOVA INVOICE RECEIPT\n---------------------\nReceipt ID: ${r.receiptId}\nAsset: ${r.assetSymbol}\nResult: ${r.status}\nStake: $${r.stake}\nProfit: $${r.profit}\nTx Hash: ${r.transactionHash}`;
+                                  const blob = new Blob([text], { type: 'text/plain' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.download = `Invoice_${r.receiptId}.txt`;
+                                  a.href = url;
+                                  a.click();
+                                }}
+                                className="bg-[#202536] hover:bg-[#2B3348] border border-[#30374B] px-2.5 py-1 rounded text-[10px] font-bold text-white transition flex items-center gap-1"
+                              >
+                                Export PNG/TXT
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+===== FILE: components\terminal\asset-flag.tsx =====
+'use client';
+
+import React from 'react';
+
+// Pure SVG Circular Flags for visual precision without external image assets
+const FLAG_SVGS: Record<string, React.ReactNode> = {
+  AUD: (
+    <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
+      <rect width="32" height="32" fill="#000080" />
+      <path d="M0,0 L16,10 M16,0 L0,10" stroke="#FFF" strokeWidth="2" />
+      <path d="M0,0 L16,10 M16,0 L0,10" stroke="#CC0000" strokeWidth="1" />
+      <path d="M8,0 V10 M0,5 H16" stroke="#FFF" strokeWidth="3" />
+      <path d="M8,0 V10 M0,5 H16" stroke="#CC0000" strokeWidth="1.5" />
+      <circle cx="8" cy="22" r="2.5" fill="#FFF" />
+      <circle cx="22" cy="8" r="1.5" fill="#FFF" />
+      <circle cx="24" cy="16" r="1.5" fill="#FFF" />
+      <circle cx="22" cy="24" r="1.5" fill="#FFF" />
+    </svg>
+  ),
+  CAD: (
+    <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
+      <rect width="32" height="32" fill="#FF0000" />
+      <rect x="9" width="14" height="32" fill="#FFF" />
+      <path d="M16 8 L18 13 L21 12 L19 16 L22 18 L17 19 L18 24 L16 22 L14 24 L15 19 L10 18 L13 16 L11 12 L14 13 Z" fill="#FF0000" />
+    </svg>
+  ),
+  USD: (
+    <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
+      <rect width="32" height="32" fill="#B22234" />
+      <path d="M0 4h32M0 11h32M0 18h32M0 25h32" stroke="#FFF" strokeWidth="2.5" />
+      <rect width="16" height="16" fill="#3C3B6E" />
+      <circle cx="4" cy="4" r="0.8" fill="#FFF" />
+      <circle cx="12" cy="4" r="0.8" fill="#FFF" />
+      <circle cx="8" cy="8" r="0.8" fill="#FFF" />
+      <circle cx="4" cy="12" r="0.8" fill="#FFF" />
+      <circle cx="12" cy="12" r="0.8" fill="#FFF" />
+    </svg>
+  ),
+  EUR: (
+    <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
+      <rect width="32" height="32" fill="#003399" />
+      <circle cx="16" cy="16" r="10" stroke="#FFCC00" strokeWidth="1" strokeDasharray="2 3" fill="none" />
+    </svg>
+  ),
+  GBP: (
+    <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
+      <rect width="32" height="32" fill="#012169" />
+      <path d="M0,0 L32,32 M32,0 L0,32" stroke="#FFF" strokeWidth="4" />
+      <path d="M0,0 L32,32 M32,0 L0,32" stroke="#C8102E" strokeWidth="2" />
+      <path d="M16,0 V32 M0,16 H32" stroke="#FFF" strokeWidth="6" />
+      <path d="M16,0 V32 M0,16 H32" stroke="#C8102E" strokeWidth="3" />
+    </svg>
+  ),
+  JPY: (
+    <svg viewBox="0 0 32 32" className="w-full h-full rounded-full">
+      <rect width="32" height="32" fill="#FFF" />
+      <circle cx="16" cy="16" r="9" fill="#BC002D" />
+    </svg>
+  ),
+  BTC: (
+    <div className="w-full h-full rounded-full bg-[#F7931A] flex items-center justify-center text-white font-bold text-[11px]">
+      â‚¿
+    </div>
+  ),
+  GOLD: (
+    <div className="w-full h-full rounded-full bg-gradient-to-br from-[#FFE259] to-[#FFA751] flex items-center justify-center text-[#171A2B] font-bold text-[10px]">
+      Au
+    </div>
+  ),
+};
+
+interface AssetFlagProps {
+  symbol: string;
+  size?: 'sm' | 'md';
+}
+
+export const AssetFlag: React.FC<AssetFlagProps> = ({ symbol, size = 'md' }) => {
+  const parts = symbol.replace(' OTC', '').split('/');
+  const base = parts[0] || symbol;
+  const quote = parts[1];
+
+  const dimensions = size === 'sm' ? 'w-5 h-5' : 'w-6 h-6';
+
+  if (quote) {
+    return (
+      <div className="relative flex items-center w-8 h-6">
+        <div className={`absolute left-0 z-10 ${dimensions} rounded-full border border-[#202536] overflow-hidden shadow`}>
+          {FLAG_SVGS[base] || <div className="bg-[#477EB9] w-full h-full" />}
+        </div>
+        <div className={`absolute left-3.5 z-0 ${dimensions} rounded-full border border-[#202536] overflow-hidden shadow`}>
+          {FLAG_SVGS[quote] || <div className="bg-[#2EAE49] w-full h-full" />}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${dimensions} rounded-full border border-[#202536] overflow-hidden shadow`}>
+      {FLAG_SVGS[base] || <div className="bg-[#477EB9] w-full h-full" />}
+    </div>
+  );
+};
+
+===== FILE: components\terminal\asset-selector.tsx =====
+'use client';
+
+import React, { useState } from 'react';
+import { Asset, useTerminalStore } from '@/lib/store/terminal-store';
+import { AssetFlag } from './asset-flag';
+import { Search, Star, DollarSign, Bitcoin, Droplet, BarChart3, PieChart, Calendar, Info } from 'lucide-react';
+
+export const POCKET_ASSETS: (Asset & { isOtc?: boolean })[] = [
+  { symbol: 'AUD/CAD OTC', name: 'AUD/CAD OTC', category: 'Forex', payout: 92, basePrice: 1.01600, decimals: 5, isOtc: true },
+  { symbol: 'AED/CNY OTC', name: 'AED/CNY OTC', category: 'Forex', payout: 92, basePrice: 1.91200, decimals: 5, isOtc: true },
+  { symbol: 'BHD/CNY OTC', name: 'BHD/CNY OTC', category: 'Forex', payout: 92, basePrice: 18.6500, decimals: 4, isOtc: true },
+  { symbol: 'CAD/CHF', name: 'CAD/CHF', category: 'Forex', payout: 92, basePrice: 0.64320, decimals: 5 },
+  { symbol: 'CAD/CHF OTC', name: 'CAD/CHF OTC', category: 'Forex', payout: 92, basePrice: 0.64320, decimals: 5, isOtc: true },
+  { symbol: 'CAD/JPY OTC', name: 'CAD/JPY OTC', category: 'Forex', payout: 92, basePrice: 111.450, decimals: 3, isOtc: true },
+  { symbol: 'EUR/CHF OTC', name: 'EUR/CHF OTC', category: 'Forex', payout: 92, basePrice: 0.95620, decimals: 5, isOtc: true },
+  { symbol: 'EUR/GBP OTC', name: 'EUR/GBP OTC', category: 'Forex', payout: 92, basePrice: 0.85410, decimals: 5, isOtc: true },
+  { symbol: 'EUR/USD OTC', name: 'EUR/USD OTC', category: 'Forex', payout: 92, basePrice: 1.08450, decimals: 5, isOtc: true },
+  { symbol: 'BTC/USD', name: 'BTC/USD', category: 'Crypto', payout: 85, basePrice: 64250.00, decimals: 2 },
+  { symbol: 'GOLD OTC', name: 'GOLD OTC', category: 'Commodities', payout: 91, basePrice: 2335.20, decimals: 2, isOtc: true },
+];
+
+const categories = [
+  { id: 'Forex', label: 'Currencies', icon: DollarSign },
+  { id: 'Crypto', label: 'Cryptocurrencies', icon: Bitcoin },
+  { id: 'Commodities', label: 'Commodities', icon: Droplet },
+  { id: 'Stocks', label: 'Stocks', icon: BarChart3 },
+  { id: 'Indices', label: 'Indices', icon: PieChart },
+  { id: 'Favorites', label: 'Favorites', icon: Star },
+  { id: 'Schedule', label: 'Schedule', icon: Calendar },
+];
+
+interface AssetSelectorProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const AssetSelector: React.FC<AssetSelectorProps> = ({ isOpen, onClose }) => {
+  const { activeAsset, setActiveAsset } = useTerminalStore();
+  const [selectedCat, setSelectedCat] = useState('Forex');
+  const [search, setSearch] = useState('');
+  const [favorites, setFavorites] = useState<string[]>(['AUD/CAD OTC']);
+
+  if (!isOpen) return null;
+
+  const toggleFavorite = (e: React.MouseEvent, symbol: string) => {
+    e.stopPropagation();
+    setFavorites((prev) =>
+      prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]
+    );
+  };
+
+  const filteredAssets = POCKET_ASSETS.filter((asset) => {
+    const matchesSearch = asset.symbol.toLowerCase().includes(search.toLowerCase());
+    if (selectedCat === 'Favorites') return favorites.includes(asset.symbol) && matchesSearch;
+    if (selectedCat === 'Schedule') return matchesSearch;
+    return asset.category === selectedCat && matchesSearch;
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#1D2232] border border-[#30374B] rounded-xl w-[580px] h-[480px] flex overflow-hidden shadow-2xl relative"
+      >
+        {/* Left Sub-Navigation Rail */}
+        <div className="w-[180px] bg-[#171A2B] border-r border-[#30374B] flex flex-col p-2 justify-between select-none">
+          <div className="flex flex-col gap-1">
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              const isActive = selectedCat === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCat(cat.id)}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                    isActive
+                      ? 'bg-[#2A3044] text-[#477EB9] border border-[#3D6C9D]/40'
+                      : 'text-[#91A0BD] hover:bg-[#202536] hover:text-[#F4F6FF]'
+                  }`}
+                >
+                  <Icon size={15} className={isActive ? 'text-[#477EB9]' : 'text-[#68758F]'} />
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Bottom Info Widget */}
+          <div className="bg-[#1D2030] border border-[#2A3044] rounded-lg p-2 text-[10px] text-[#68758F] flex items-start gap-1.5 leading-tight">
+            <Info size={14} className="text-[#477EB9] shrink-0 mt-0.5" />
+            <span>OTC quotes are provided directly by market makers.</span>
+          </div>
+        </div>
+
+        {/* Right Asset List Area */}
+        <div className="flex-1 flex flex-col bg-[#1D2232]">
+          {/* Top Search Input */}
+          <div className="p-3 border-b border-[#30374B]">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-[#171A2B] border border-[#30374B] rounded-lg pl-3 pr-8 py-1.5 text-xs text-[#F4F6FF] placeholder-[#68758F] focus:outline-none focus:border-[#477EB9]"
+              />
+              <Search size={14} className="absolute right-3 top-2 text-[#68758F]" />
+            </div>
+          </div>
+
+          {/* Table Header */}
+          <div className="flex justify-between px-4 py-2 border-b border-[#30374B] text-[11px] font-semibold text-[#68758F]">
+            <span>Asset</span>
+            <span>Payout â–¼</span>
+          </div>
+
+          {/* Assets Scroll View */}
+          <div className="flex-1 overflow-y-auto px-1 py-1">
+            {filteredAssets.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#68758F]">No assets found</div>
+            ) : (
+              filteredAssets.map((asset) => {
+                const isFav = favorites.includes(asset.symbol);
+                const isActive = activeAsset.symbol === asset.symbol;
+                return (
+                  <div
+                    key={asset.symbol}
+                    onClick={() => {
+                      setActiveAsset(asset);
+                      onClose();
+                    }}
+                    className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition text-xs ${
+                      isActive
+                        ? 'bg-[#2A3044] text-white border-l-2 border-[#477EB9]'
+                        : 'hover:bg-[#202536] text-[#F4F6FF]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        onClick={(e) => toggleFavorite(e, asset.symbol)}
+                        className="text-[#68758F] hover:text-[#FFC107] transition"
+                      >
+                        <Star size={14} fill={isFav ? '#FFC107' : 'none'} className={isFav ? 'text-[#FFC107]' : ''} />
+                      </button>
+                      <AssetFlag symbol={asset.symbol} />
+                      <span className="font-semibold tracking-wide ml-1">{asset.symbol}</span>
+                    </div>
+                    <span className="font-bold text-[#2EAE49] text-xs">+{asset.payout}%</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+===== FILE: components\terminal\auth-modal.tsx =====
+'use client';
+
+import React from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import { UserPlus, LogIn, Lock } from 'lucide-react';
+
+export cons

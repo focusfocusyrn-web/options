@@ -1,0 +1,1074 @@
+﻿ransparent; border: 1px solid rgba(255, 255, 255, 0.15); color: #8ea8cc; transition: 0.2s; }
+        .ti-btn-export:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+
+        /* Footer */
+        .ti-footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 30px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0, 0, 0, 0.2); font-size: 12px; color: #8ea8cc; }
+        .ti-footer-side { display: flex; align-items: center; gap: 6px; }
+        
+        .ti-flag { border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-weight: 800; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2); }
+      `}</style>
+
+      <div className="ti-overlay" role="dialog" aria-modal="true">
+        <div className="ti-receipt" ref={receiptRef}>
+          
+          {/* Top Left Logo */}
+          <img src="/icon.png" alt="Logo" className="ti-logo" />
+
+          <div className="ti-body">
+            <SuccessHeader onClose={onClose} status={status} />
+            
+            <div className="ti-card">
+              <div className="ti-pair-row">
+                <div className="ti-pair-left">
+                  <FlagIcon code={base} size={28} />
+                  <div className="ti-pair-text">
+                    <span className="ti-pair-name">{asset}</span>
+                    <span className={`ti-pair-dir ${direction === "UP" ? "up" : "down"}`}>
+                      {direction === "UP" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}{direction}
+                    </span>
+                  </div>
+                </div>
+                <div className="ti-pair-right text-right">
+                  <span className="ti-amount">{formatMoney(amount)}</span>
+                  <span className="ti-amount-label block">Investment</span>
+                </div>
+              </div>
+
+              <div className="ti-card-divider" />
+
+              <div className="ti-details-row">
+                <div className="ti-detail-cell">
+                  <span className="ti-detail-label">Entry Price</span>
+                  <span className="ti-detail-value">{entryPrice}</span>
+                </div>
+                <div className="ti-detail-divider" />
+                <div className="ti-detail-cell">
+                  <span className="ti-detail-label">Exit Price</span>
+                  <span className="ti-detail-value">{exitPrice}</span>
+                </div>
+              </div>
+
+              <div className="ti-card-divider" />
+
+              <div className="ti-details-row">
+                <div className="ti-detail-cell">
+                  <span className="ti-detail-label">Time</span>
+                  <span className="ti-detail-value">{duration}s</span>
+                </div>
+                <div className="ti-detail-divider" />
+                <div className="ti-detail-cell">
+                  <span className="ti-detail-label">Result</span>
+                  <span className={`ti-detail-value ti-result`}>
+                    {profit > 0 ? '+' : ''}{formatMoney(profit)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="ti-profit-banner">
+              <div className="ti-profit-icon">
+                {isWin ? <TrendingUp size={24} /> : isTie ? <Clock size={24} /> : <TrendingDown size={24} />}
+              </div>
+              <div className="ti-profit-text">
+                <span className="ti-profit-label">{isWin ? 'PROFIT' : isTie ? 'REFUND' : 'LOSS'}</span>
+                <span className="ti-profit-value">{profit > 0 ? '+' : ''}{formatMoney(profit)}</span>
+              </div>
+            </div>
+
+            <div className="ti-actions">
+              <button className="ti-btn ti-btn-primary" type="button" onClick={onNewTrade}>New Trade</button>
+              <button className="ti-btn ti-btn-ghost" type="button" onClick={onViewTrades}>View Trades</button>
+            </div>
+
+            <div className="ti-export-row">
+              <button className="ti-btn-export" onClick={handleDownloadPNG}>
+                <Download size={14} /> Save Image
+              </button>
+              <button className="ti-btn-export" onClick={() => window.print()}>
+                <FileText size={14} /> Save PDF
+              </button>
+            </div>
+
+          </div>
+
+          <div className="ti-footer">
+            <div className="ti-footer-side"><History size={14} /><span>{new Date().toLocaleTimeString()}</span></div>
+            <div className="ti-footer-side"><Clock size={14} /><span>Expires {new Date().toLocaleTimeString()}</span></div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+===== FILE: components\terminal\trades-panel.tsx =====
+'use client';
+
+import React from 'react';
+import { useTerminalStore } from '@/lib/store/terminal-store';
+import { TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle } from 'lucide-react';
+
+export const TradesPanel: React.FC = () => {
+  const { activeTab, setActiveTab, openedTrades, receipts } = useTerminalStore();
+
+  return (
+    <div className="w-full lg:w-[330px] bg-[var(--panel-bg)] border-r border-[var(--border-color)] flex flex-col select-none shrink-0 h-48 lg:h-auto">
+      {/* Title */}
+      <div className="hidden lg:block py-3 px-4 border-b border-[var(--border-color)] text-center font-bold text-sm text-[#F4F6FF]">
+        Trades
+      </div>
+
+      {/* Tabs */}
+      <div className="grid grid-cols-2 border-b border-[var(--border-color)] text-xs font-semibold">
+        <button
+          onClick={() => setActiveTab('opened')}
+          className={`py-2 text-center transition relative ${
+            activeTab === 'opened' ? 'text-[#49A6D8]' : 'text-[#91A0BD] hover:text-[#F4F6FF]'
+          }`}
+        >
+          Opened ({openedTrades.length})
+          {activeTab === 'opened' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#49A6D8]"></div>}
+        </button>
+        <button
+          onClick={() => setActiveTab('closed')}
+          className={`py-2 text-center transition relative ${
+            activeTab === 'closed' ? 'text-[#49A6D8]' : 'text-[#91A0BD] hover:text-[#F4F6FF]'
+          }`}
+        >
+          Closed ({receipts.length})
+          {activeTab === 'closed' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#49A6D8]"></div>}
+        </button>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto p-2 lg:p-3 flex flex-col gap-2">
+        {activeTab === 'opened' ? (
+          openedTrades.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center text-[#68758F] py-6 lg:py-12">
+              <Clock size={28} className="mb-1.5 opacity-40" />
+              <p className="text-xs lg:text-sm font-medium">No opened trades</p>
+            </div>
+          ) : (
+            openedTrades.map((trade) => {
+              const timeLeft = Math.max(0, Math.ceil((trade.expiryTime - Date.now()) / 1000));
+              return (
+                <div key={trade.id} className="bg-[#1B1E2C] border border-[#30374B] rounded-lg p-2.5 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#F4F6FF]">{trade.assetSymbol}</span>
+                    <span
+                      className={`flex items-center gap-1 font-bold ${
+                        trade.direction === 'UP' ? 'text-[#2EAE49]' : 'text-[#F3332D]'
+                      }`}
+                    >
+                      {trade.direction === 'UP' ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                      {trade.direction}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px] text-[#91A0BD]">
+                    <div>
+                      <span className="text-[9px] text-[#68758F] block">Stake</span>
+                      <span className="font-bold text-[#F4F6FF]">${trade.stake.toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-[#68758F] block">Entry</span>
+                      <span className="font-bold text-[#F4F6FF]">{trade.entryPrice}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-[#68758F] block">Exp</span>
+                      <span className="font-bold text-[#49A6D8]">{timeLeft}s</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )
+        ) : receipts.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center text-[#68758F] py-6 lg:py-12">
+            <p className="text-xs lg:text-sm font-medium">No closed trades</p>
+          </div>
+        ) : (
+          receipts.map((receipt) => {
+            const isWon = receipt.status === 'WON';
+            const isTie = receipt.status === 'TIE';
+            const tradeDate = new Date(receipt.timestamp).toLocaleTimeString();
+            return (
+              <div key={receipt.receiptId} className="bg-[#1B1E2C] border border-[#30374B] rounded-lg p-2.5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#F4F6FF]">{receipt.assetSymbol}</span>
+                  <span
+                    className={`flex items-center gap-1 font-bold ${
+                      isWon ? 'text-[#2EAE49]' : isTie ? 'text-[#91A0BD]' : 'text-[#F3332D]'
+                    }`}
+                  >
+                    {isWon ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
+                    {receipt.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-[11px] text-[#91A0BD]">
+                  <div>
+                    <span className="text-[9px] text-[#68758F] block">Stake</span>
+                    <span className="font-bold text-[#F4F6FF]">${receipt.stake.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-[#68758F] block">Result</span>
+                    <span className={`font-bold ${isWon ? 'text-[#2EAE49]' : isTie ? 'text-[#91A0BD]' : 'text-[#F3332D]'}`}>
+                      {isWon ? `+$${receipt.profit.toFixed(2)}` : isTie ? `$${receipt.stake.toFixed(2)}` : `-$${receipt.stake.toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-[#68758F] block">Time</span>
+                    <span className="font-bold text-[#F4F6FF]">{tradeDate}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-[#68758F] pt-1 border-t border-[#30374B]">
+                  <div>
+                    <span>Entry: </span>
+                    <span className="text-[#91A0BD]">{receipt.entryPrice}</span>
+                  </div>
+                  <div>
+                    <span>Settle: </span>
+                    <span className="text-[#91A0BD]">{receipt.settlementPrice}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
+
+===== FILE: lib\chart\chart-coordinates.ts =====
+import { PricePoint } from '../market/synthetic-market';
+
+export interface ChartBounds {
+  width: number;
+  height: number;
+  paddingRight: number;
+  paddingBottom: number;
+}
+
+export function calculatePriceRange(history: PricePoint[]): { minPrice: number; maxPrice: number } {
+  if (history.length === 0) return { minPrice: 0, maxPrice: 100 };
+  let min = history[0].price;
+  let max = history[0].price;
+
+  for (let i = 0; i < history.length; i++) {
+    if (history[i].price < min) min = history[i].price;
+    if (history[i].price > max) max = history[i].price;
+  }
+
+  const margin = (max - min) * 0.15 || 0.001;
+  return {
+    minPrice: min - margin,
+    maxPrice: max + margin,
+  };
+}
+
+export function priceToY(price: number, minPrice: number, maxPrice: number, chartHeight: number): number {
+  if (maxPrice === minPrice) return chartHeight / 2;
+  const range = maxPrice - minPrice;
+  return chartHeight - ((price - minPrice) / range) * chartHeight;
+}
+
+export function yToPrice(y: number, minPrice: number, maxPrice: number, chartHeight: number): number {
+  const range = maxPrice - minPrice;
+  return maxPrice - (y / chartHeight) * range;
+}
+
+export function timestampToX(timestamp: number, startTime: number, endTime: number, chartWidth: number): number {
+  const timeRange = endTime - startTime;
+  if (timeRange <= 0) return 0;
+  return ((timestamp - startTime) / timeRange) * chartWidth;
+}
+
+===== FILE: lib\hooks\use-live-price.ts =====
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+
+// Real exchange feeds (crypto only)
+const PAIRS: Record<string, { binance: string; coinbase: string }> = {
+  'BTC/USD': { binance: 'btcusdt', coinbase: 'BTC-USD' },
+  'ETH/USD': { binance: 'ethusdt', coinbase: 'ETH-USD' },
+  'SOL/USD': { binance: 'solusdt', coinbase: 'SOL-USD' },
+};
+
+// Starting prices for simulated markets (forex / OTC)
+const BASES: Record<string, number> = {
+  'AUD/USD': 0.64862,
+  'EUR/USD': 1.08383,
+  'GBP/USD': 1.2645,
+  'USD/JPY': 154.661,
+};
+
+function baseFor(symbol: string, fallback: number): number {
+  if (fallback > 0) return fallback;
+  const clean = symbol.replace(/\s*OTC$/i, '').trim();
+  if (BASES[clean]) return BASES[clean];
+  // Stable pseudo-random base for unknown symbols (e.g. BHD/CNY OTC)
+  let h = 0;
+  for (let i = 0; i < symbol.length; i++) h = (h * 31 + symbol.charCodeAt(i)) >>> 0;
+  return 0.5 + (h % 1500) / 1000; // 0.5 to 2.0
+}
+
+/**
+ * Returns a live price for any symbol.
+ * - Crypto in PAIRS: real WebSocket feed (Binance, then Coinbase fallback)
+ * - Everything else (forex, OTC): simulated random walk around a base price
+ * Returns 0 only for the first instant before a price exists.
+ */
+export function useLivePrice(symbol: string, fallbackPrice = 0): number {
+  const [price, setPrice] = useState(0);
+  const latest = useRef(0);
+  const fallbackRef = useRef(fallbackPrice);
+  fallbackRef.current = fallbackPrice;
+
+  useEffect(() => {
+    latest.current = 0;
+    setPrice(0);
+
+    const pair = PAIRS[symbol];
+    let closed = false;
+    let ws: WebSocket | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let simTimer: ReturnType<typeof setInterval> | undefined;
+
+    if (pair) {
+      // ---------- Real feed ----------
+      let useBinance = true;
+      let failures = 0;
+
+      const connect = () => {
+        if (closed) return;
+
+        if (useBinance) {
+          ws = new WebSocket(`wss://stream.binance.com:9443/ws/${pair.binance}@trade`);
+          ws.onmessage = (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.p) {
+              latest.current = parseFloat(msg.p);
+              failures = 0;
+            }
+          };
+        } else {
+          ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+          ws.onopen = () =>
+            ws?.send(
+              JSON.stringify({ type: 'subscribe', product_ids: [pair.coinbase], channels: ['ticker'] })
+            );
+          ws.onmessage = (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'ticker' && msg.price) {
+              latest.current = parseFloat(msg.price);
+              failures = 0;
+            }
+          };
+        }
+
+        ws.onerror = () => ws?.close();
+        ws.onclose = () => {
+          if (closed) return;
+          failures += 1;
+          if (failures >= 2) {
+            useBinance = !useBinance;
+            failures = 0;
+          }
+          retryTimer = setTimeout(connect, 1500);
+        };
+      };
+
+      connect();
+    } else {
+      // ---------- Simulated market ----------
+      const base = baseFor(symbol, fallbackRef.current);
+      let p = base;
+      latest.current = p;
+
+      simTimer = setInterval(() => {
+        const drift = (base - p) * 0.002; // gentle pull back toward the base
+        const shock = (Math.random() - 0.5) * 0.0006; // about +/-0.03% per tick
+        p = p + drift + p * shock;
+        latest.current = p;
+      }, 250);
+    }
+
+    // Push to React state a few times per second
+    const flush = setInterval(() => {
+      setPrice((prev) => (latest.current && latest.current !== prev ? latest.current : prev));
+    }, 250);
+
+    // Show the first price immediately
+    if (latest.current) setPrice(latest.current);
+
+    return () => {
+      closed = true;
+      clearTimeout(retryTimer);
+      clearInterval(simTimer);
+      clearInterval(flush);
+      ws?.close();
+    };
+  }, [symbol]);
+
+  return price;
+}
+
+===== FILE: lib\market\synthetic-market.ts =====
+import { POCKET_ASSETS } from '@/components/terminal/asset-selector';
+
+export interface PricePoint {
+  timestamp: number;
+  price: number;
+}
+
+class SyntheticMarketEngine {
+  private prices: Map<string, number> = new Map();
+  private histories: Map<string, PricePoint[]> = new Map();
+  private listeners: Map<string, ((price: number, history: PricePoint[]) => void)[]> = new Map();
+  private intervalId: NodeJS.Timeout | null = null;
+
+  constructor() {
+    const now = Date.now();
+    POCKET_ASSETS.forEach((asset) => {
+      this.prices.set(asset.symbol, asset.basePrice);
+      
+      const history: PricePoint[] = [];
+      let currentP = asset.basePrice;
+      for (let i = 150; i >= 0; i--) {
+        const time = now - i * 1000;
+        const volatility = asset.symbol.includes('JPY') ? 0.04 : asset.symbol.includes('BHD') ? 0.005 : asset.symbol.includes('BTC') ? 25.0 : 0.00015;
+        const delta = (Math.random() - 0.49) * (currentP * 0.0003);
+        currentP = Number((currentP + delta).toFixed(asset.decimals));
+        history.push({ timestamp: time, price: currentP });
+      }
+      this.histories.set(asset.symbol, history);
+      this.prices.set(asset.symbol, currentP);
+    });
+
+    this.start();
+  }
+
+  public start() {
+    if (this.intervalId) return;
+    this.intervalId = setInterval(() => {
+      const now = Date.now();
+      this.histories.forEach((history, symbol) => {
+        const currentPrice = this.prices.get(symbol) || 100;
+        const volatility = symbol.includes('JPY') ? 0.04 : symbol.includes('BTC') ? 25.0 : 0.00015;
+        const delta = (Math.random() - 0.492) * (currentPrice * 0.0002);
+        const newPrice = Number((currentPrice + delta).toFixed(symbol.includes('JPY') ? 3 : symbol.includes('BHD') ? 4 : symbol.includes('BTC') ? 2 : 5));
+
+        this.prices.set(symbol, newPrice);
+        history.push({ timestamp: now, price: newPrice });
+
+        if (history.length > 300) {
+          history.shift();
+        }
+
+        const symbolListeners = this.listeners.get(symbol);
+        if (symbolListeners) {
+          symbolListeners.forEach((cb) => cb(newPrice, history));
+        }
+      });
+    }, 200);
+  }
+
+  public getPrice(symbol: string): number {
+    return this.prices.get(symbol) || 1.08450;
+  }
+
+  public getAllPrices(): Record<string, number> {
+    const obj: Record<string, number> = {};
+    this.prices.forEach((v, k) => { obj[k] = v; });
+    return obj;
+  }
+
+  public getHistory(symbol: string): PricePoint[] {
+    return this.histories.get(symbol) || [];
+  }
+
+  public subscribe(symbol: string, callback: (price: number, history: PricePoint[]) => void) {
+    if (!this.listeners.has(symbol)) {
+      this.listeners.set(symbol, []);
+    }
+    this.listeners.get(symbol)!.push(callback);
+    return () => {
+      const list = this.listeners.get(symbol);
+      if (list) {
+        this.listeners.set(symbol, list.filter((cb) => cb !== callback));
+      }
+    };
+  }
+}
+
+export const syntheticMarket = new SyntheticMarketEngine();
+
+===== FILE: lib\store\terminal-store.ts =====
+import { create } from 'zustand';
+
+export interface Asset {
+  symbol: string;
+  name: string;
+  category: 'Forex' | 'Crypto' | 'Commodities' | 'Stocks';
+  payout: number;
+  basePrice: number;
+  decimals: number;
+}
+
+export interface TradeReceipt {
+  receiptId: string;
+  tradeId: string;
+  timestamp: number;
+  assetSymbol: string;
+  direction: 'UP' | 'DOWN';
+  stake: number;
+  entryPrice: number;
+  settlementPrice: number;
+  profit: number;
+  payoutRate: number;
+  status: 'WON' | 'LOST' | 'TIE';
+  clientIp?: string;
+  transactionHash: string;
+}
+
+export interface TradePosition {
+  id: string;
+  assetSymbol: string;
+  direction: 'UP' | 'DOWN';
+  stake: number;
+  entryPrice: number;
+  currentPrice: number;
+  entryTime: number;
+  expiryTime: number;
+  payoutRate: number;
+  status: 'OPEN' | 'WON' | 'LOST' | 'TIE';
+  settlementPrice?: number;
+  profit?: number;
+  receipt?: TradeReceipt;
+}
+
+export interface MarketControlSettings {
+  rigMode: 'NEUTRAL' | 'ALWAYS_WIN' | 'ALWAYS_LOSE';
+  priceBiasPercent: number;
+  volatilityMultiplier: number;
+  isPaused: boolean;
+}
+
+export const AVAILABLE_ASSETS: Asset[] = [
+  { symbol: 'AUD/USD', name: 'AUD/USD', category: 'Forex', payout: 92, basePrice: 0.64976, decimals: 5 },
+  { symbol: 'EUR/USD', name: 'EUR/USD', category: 'Forex', payout: 92, basePrice: 1.08450, decimals: 5 },
+  { symbol: 'GBP/USD', name: 'GBP/USD', category: 'Forex', payout: 89, basePrice: 1.26520, decimals: 5 },
+  { symbol: 'USD/JPY', name: 'USD/JPY', category: 'Forex', payout: 90, basePrice: 154.800, decimals: 3 },
+  { symbol: 'BTC/USD', name: 'BTC/USD', category: 'Crypto', payout: 85, basePrice: 64250.00, decimals: 2 },
+];
+
+interface TerminalState {
+  balance: number;
+  activeAsset: Asset;
+  durationSeconds: number;
+  investment: number;
+  activeTab: 'opened' | 'closed';
+  sidebarTab: string;
+  utilityTab: string;
+  openedTrades: TradePosition[];
+  closedTrades: TradePosition[];
+  latestClosedTrade: TradePosition | null;
+  receipts: TradeReceipt[];
+  marketControls: MarketControlSettings;
+
+  setBalance: (balance: number) => void;
+  adjustBalance: (amount: number, type: 'ADD' | 'SUBTRACT') => void;
+  setActiveAsset: (asset: Asset) => void;
+  setDurationSeconds: (seconds: number) => void;
+  setInvestment: (amount: number) => void;
+  setActiveTab: (tab: 'opened' | 'closed') => void;
+  setSidebarTab: (tab: string) => void;
+  setUtilityTab: (tab: string) => void;
+  clearLatestClosedTrade: () => void;
+  updateMarketControls: (settings: Partial<MarketControlSettings>) => void;
+  forceSettleTrade: (tradeId: string, outcome: 'WON' | 'LOST') => void;
+  clearTradeHistory: () => void;
+  settleTrades: (currentPrices: Record<string, number>, forcedTrend?: string) => void;
+  resetDemo: () => void;
+}
+
+// --- FIXED: Now points to /api/wallet/save ---
+const syncBalanceToDb = async (newBalance: number) => {
+  try {
+    await fetch('/api/wallet/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance: newBalance })
+    });
+  } catch (err) {
+    console.error('Failed to sync balance:', err);
+  }
+};
+
+const createReceiptForTrade = (trade: TradePosition, settlementPrice: number, profit: number, status: 'WON' | 'LOST' | 'TIE'): TradeReceipt => {
+  const hashString = `${trade.id}-${trade.entryTime}-${trade.stake}-${settlementPrice}`;
+  let hash = 0;
+  for (let i = 0; i < hashString.length; i++) {
+    hash = (hash << 5) - hash + hashString.charCodeAt(i);
+    hash |= 0;
+  }
+  
+  return {
+    receiptId: `RCT-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+    tradeId: trade.id,
+    timestamp: Date.now(),
+    assetSymbol: trade.assetSymbol,
+    direction: trade.direction,
+    stake: trade.stake,
+    entryPrice: trade.entryPrice,
+    settlementPrice,
+    profit,
+    payoutRate: trade.payoutRate,
+    status,
+    transactionHash: `0x${Math.abs(hash).toString(16).padStart(16, '0')}${Math.random().toString(16).substring(2, 10)}`,
+  };
+};
+
+const saveInvoiceToCloud = async (receipt: TradeReceipt) => {
+  try {
+    await fetch('/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(receipt),
+    });
+  } catch (err) {
+    console.error('Failed to sync invoice to cloud:', err);
+  }
+};
+
+export const useTerminalStore = create<TerminalState>((set, get) => ({
+  balance: 50000.00,
+  activeAsset: AVAILABLE_ASSETS[0],
+  durationSeconds: 30,
+  investment: 100.00,
+  activeTab: 'opened',
+  sidebarTab: 'trading',
+  utilityTab: 'trades',
+  openedTrades: [],
+  closedTrades: [],
+  latestClosedTrade: null,
+  receipts: [],
+
+  marketControls: {
+    rigMode: 'NEUTRAL',
+    priceBiasPercent: 0,
+    volatilityMultiplier: 1.0,
+    isPaused: false,
+  },
+
+  setBalance: (balance) => set({ balance }),
+  adjustBalance: (amount, type) => {
+    const { balance } = get();
+    const newBalance = type === 'ADD' ? balance + amount : Math.max(0, balance - amount);
+    const finalBalance = Number(newBalance.toFixed(2));
+    
+    set({ balance: finalBalance });
+    syncBalanceToDb(finalBalance);
+  },
+  setActiveAsset: (asset) => set({ activeAsset: asset }),
+  setDurationSeconds: (durationSeconds) => set({ durationSeconds }),
+  setInvestment: (investment) => set({ investment }),
+  setActiveTab: (activeTab) => set({ activeTab }),
+  setSidebarTab: (sidebarTab) => set({ sidebarTab }),
+  setUtilityTab: (utilityTab) => set({ utilityTab }),
+  clearLatestClosedTrade: () => set({ latestClosedTrade: null }),
+  updateMarketControls: (settings) => {
+    set((state) => ({ marketControls: { ...state.marketControls, ...settings } }));
+  },
+
+  forceSettleTrade: (tradeId, forcedOutcome) => {
+    const { openedTrades, closedTrades, balance, receipts } = get();
+    const tradeIndex = openedTrades.findIndex((t) => t.id === tradeId);
+    if (tradeIndex === -1) return;
+
+    const trade = openedTrades[tradeIndex];
+    let profit = 0;
+    let balanceAdd = 0;
+    const delta = trade.entryPrice * 0.0005;
+    let settlementPrice = trade.currentPrice;
+
+    if (forcedOutcome === 'WON') {
+      settlementPrice = trade.direction === 'UP' ? trade.entryPrice + delta : trade.entryPrice - delta;
+      profit = Number((trade.stake * (trade.payoutRate / 100)).toFixed(2));
+      balanceAdd = trade.stake + profit;
+    } else {
+      settlementPrice = trade.direction === 'UP' ? trade.entryPrice - delta : trade.entryPrice + delta;
+      profit = -trade.stake;
+      balanceAdd = 0;
+    }
+
+    const receipt = createReceiptForTrade(trade, settlementPrice, profit, forcedOutcome);
+    saveInvoiceToCloud(receipt);
+
+    const settledTrade: TradePosition = {
+      ...trade,
+      status: forcedOutcome,
+      currentPrice: settlementPrice,
+      settlementPrice,
+      profit,
+      receipt,
+    };
+
+    const remaining = openedTrades.filter((t) => t.id !== tradeId);
+    const newBalance = Number((balance + balanceAdd).toFixed(2));
+
+    set({
+      balance: newBalance,
+      openedTrades: remaining,
+      closedTrades: [settledTrade, ...closedTrades],
+      latestClosedTrade: settledTrade,
+      receipts: [receipt, ...receipts],
+    });
+
+    syncBalanceToDb(newBalance);
+  },
+
+  clearTradeHistory: () => set({ closedTrades: [], receipts: [], latestClosedTrade: null }),
+
+  settleTrades: (currentPrices, forcedTrend) => {
+    const { openedTrades, closedTrades, balance, marketControls, receipts } = get();
+    if (marketControls.isPaused) return;
+
+    const now = Date.now();
+    let balanceAdd = 0;
+    const newlyClosed: TradePosition[] = [];
+    const remainingOpen: TradePosition[] = [];
+    const newReceipts: TradeReceipt[] = [];
+
+    openedTrades.forEach((trade) => {
+      let currentPrice = currentPrices[trade.assetSymbol] || trade.currentPrice;
+
+      if (now >= trade.expiryTime) {
+        let status: 'WON' | 'LOST' | 'TIE' = 'TIE';
+        let profit = 0;
+
+        const isForcedWin = 
+          marketControls.rigMode === 'ALWAYS_WIN' || 
+          (forcedTrend === 'up' && trade.direction === 'UP') || 
+          (forcedTrend === 'down' && trade.direction === 'DOWN');
+
+        const isForcedLoss = 
+          marketControls.rigMode === 'ALWAYS_LOSE' || 
+          (forcedTrend === 'up' && trade.direction === 'DOWN') || 
+          (forcedTrend === 'down' && trade.direction === 'UP');
+
+        if (isForcedWin) {
+          status = 'WON';
+        } else if (isForcedLoss) {
+          status = 'LOST';
+        } else {
+          if (trade.direction === 'UP') {
+            if (currentPrice > trade.entryPrice) status = 'WON';
+            else if (currentPrice < trade.entryPrice) status = 'LOST';
+          } else {
+            if (currentPrice < trade.entryPrice) status = 'WON';
+            else if (currentPrice > trade.entryPrice) status = 'LOST';
+          }
+        }
+
+        if (status === 'WON') {
+          profit = Number((trade.stake * (trade.payoutRate / 100)).toFixed(2));
+          balanceAdd += trade.stake + profit;
+          
+          const delta = trade.entryPrice * 0.0002;
+          currentPrice = trade.direction === 'UP' ? trade.entryPrice + delta : trade.entryPrice - delta;
+        } else if (status === 'LOST') {
+          profit = -trade.stake;
+          
+          const delta = trade.entryPrice * 0.0002;
+          currentPrice = trade.direction === 'UP' ? trade.entryPrice - delta : trade.entryPrice + delta;
+        } else {
+          balanceAdd += trade.stake;
+          currentPrice = trade.entryPrice;
+        }
+
+        const receipt = createReceiptForTrade(trade, currentPrice, profit, status);
+        saveInvoiceToCloud(receipt);
+        newReceipts.push(receipt);
+
+        const settledPosition: TradePosition = {
+          ...trade,
+          status,
+          currentPrice,
+          settlementPrice: currentPrice,
+          profit,
+          receipt,
+        };
+
+        newlyClosed.push(settledPosition);
+      } else {
+        remainingOpen.push({ ...trade, currentPrice });
+      }
+    });
+
+    if (newlyClosed.length > 0) {
+      const newBalance = Number((balance + balanceAdd).toFixed(2));
+      
+      set({
+        balance: newBalance,
+        openedTrades: remainingOpen,
+        closedTrades: [...newlyClosed, ...closedTrades],
+        latestClosedTrade: newlyClosed[0],
+        receipts: [...newReceipts, ...receipts],
+      });
+      
+      syncBalanceToDb(newBalance);
+    } else if (remainingOpen.length !== openedTrades.length) {
+      set({ openedTrades: remainingOpen });
+    }
+  },
+
+  resetDemo: () => {
+    set({
+      balance: 50000.00,
+      openedTrades: [],
+      closedTrades: [],
+      receipts: [],
+      latestClosedTrade: null,
+      marketControls: { rigMode: 'NEUTRAL', priceBiasPercent: 0, volatilityMultiplier: 1.0, isPaused: false },
+    });
+    syncBalanceToDb(50000.00);
+  },
+}));
+
+export const executeTrade = (direction: 'UP' | 'DOWN', currentPrice: number) => {
+  const store = useTerminalStore.getState();
+  if (store.balance < store.investment) return;
+
+  const now = Date.now();
+  const newTrade: TradePosition = {
+    id: Math.random().toString(36).substring(2, 9),
+    assetSymbol: store.activeAsset.symbol,
+    direction,
+    stake: store.investment,
+    entryPrice: currentPrice,
+    currentPrice,
+    entryTime: now,
+    expiryTime: now + store.durationSeconds * 1000,
+    payoutRate: store.activeAsset.payout,
+    status: 'OPEN',
+  };
+
+  const newBalance = Number((store.balance - store.investment).toFixed(2));
+
+  useTerminalStore.setState({
+    balance: newBalance,
+    openedTrades: [newTrade, ...store.openedTrades],
+  });
+
+  syncBalanceToDb(newBalance);
+};
+
+===== FILE: middleware.ts =====
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(req: NextRequest) {
+  const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');
+  const isLoginPage = req.nextUrl.pathname === '/admin/login';
+  
+  // Check for YOUR specific cookie name
+  const session = req.cookies.get('nova_admin_session')?.value;
+
+  // If trying to access admin dashboard without login, redirect to login
+  if (isAdminRoute && !isLoginPage && !session) {
+    return NextResponse.redirect(new URL('/admin/login', req.url));
+  }
+
+  // If already logged in and trying to visit login page, redirect to dashboard
+  if (isLoginPage && session) {
+    return NextResponse.redirect(new URL('/admin', req.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/admin/:path*'],
+};
+
+===== FILE: next-env.d.ts =====
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+import "./.next/dev/types/root-params.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+===== FILE: package.json =====
+{
+  "name": "nova-gemini",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^1.63.0",
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.3",
+    "typescript": "7.0.2"
+  }
+}
+
+
+===== FILE: package-lock.json =====
+{
+  "name": "nova-gemini",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "nova-gemini",
+      "version": "1.0.0",
+      "license": "ISC",
+      "dependencies": {
+        "@supabase/supabase-js": "^2.118.0",
+        "@tailwindcss/postcss": "^4.3.3",
+        "html2canvas": "^1.4.1",
+        "lucide-react": "^1.63.0",
+        "next": "^16.4.3",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "zod": "^4.6.7",
+        "zustand": "^5.0.16"
+      },
+      "devDependencies": {
+        "@types/node": "26.6.6",
+        "@types/react": "19.3.0",
+        "autoprefixer": "^10.6.2",
+        "postcss": "^8.5.32",
+        "tailwindcss": "^4.3.3",
+        "typescript": "7.0.2"
+      }
+    },
+    "node_modules/@alloc/quick-lru": {
+      "version": "5.3.0",
+      "resolved": "https://registry.npmjs.org/@alloc/quick-lru/-/quick-lru-5.3.0.tgz",
+      "integrity": "sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=10"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
+    "node_modules/@emnapi/runtime": {
+      "version": "1.11.3",
+      "resolved": "https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.11.3.tgz",
+      "integrity": "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==",
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@img/colour": {
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/@img/colour/-/colour-1.1.0.tgz",
+      "integrity": "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==",
+      "license": "MIT",
+      "optional": true,
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "node_modules/@img/sharp-darwin-arm64": {
+      "version": "0.35.5",
+      "resolved": "https://registry.npmjs.org/@img/sharp-darwin-arm64/-/sharp-darwin-arm64-0.35.5.tgz",
+      "integrity": "sha512-QRUlFQ0WxvdWyqqG/WtI3iupfD5rBzmCHXSdPsY91sAtVtTo7Q4cb6zOccZ3gqEqkr0f1As1ehLqmEpDsRf+lg==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "Apache-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">=20.9.0"
+      },
+      "funding": {
+        "url": "https://opencollective.com/libvips"
+      },
+      "optionalDependencies": {
+        "@img/sharp-libvips-darwin-arm64": "1.3.4"
+      }
+    },
+    "node_modules/@img/sharp-darwin-x64": {
+      "version": "0.35.5",
+      "resolved": "https://registry.npmjs.org/@img/sharp-darwin-x64/-/sharp-darwin-x64-0.35.5.tgz",
+      "integrity": "sha512-+BR255RhDlpygUpOc/Jdt1nT6DQ3XG/ERo5wbcdOf5Q320dKtPCKPLR1LJs9VGXRaMa8l1uUa0tkCNOXiAxZUw==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "Apache-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">=20.9.0"
+      },
+      "funding": {
+        "url": "https://opencollective.com/libvips"
+      },
+      "optionalDependencies": {
+        "@img/sharp-libvips-darwin-x64": "1.3.4"
+      }
+    },
+    "node_modules/@img/sharp-freebsd-wasm32": {
+      "version": "0.35.5",
+      "resolved": "https://registry.npmjs.org/@img/sharp-freebsd-wasm32/-/sharp-freebsd-wasm32-0.35.5.tgz",
+      "integrity": "sha512-Y/z91nEZ4uIBX5X3nfTovjU9lHNKFYbL2lpHCLVNmXQK03VIZvXBBt0KxbPGp2SdGSF+2mQU4e+hQaWOt86iAw==",
+      "license": "Apache-2.0",
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "dependencies": {
+        "@img/sharp-wasm32": "0.35.5"
+      },
+      "engines": {
+        "node": ">=20.9.0"
+      },
+      "funding": {
+        "url": "https://opencollective.com/libvips"
+      }
+    },
+    "node_modules/@img/sharp-libvips-darwin-arm64": {
+      "version": "1.3.4",
+      "resolved": "https://registry.npmjs.org/@img/sharp-libvips-darwin-arm64/-/sharp-libvips-darwin-arm64-1.3.4.tgz",
+      "integrity": "sha512-5R89nBYiRdUlSWJxPhO+

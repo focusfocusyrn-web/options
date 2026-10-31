@@ -16,7 +16,6 @@ import { Activity } from 'lucide-react';
 export default function DepositStep1TerminalPage() {
   const { activeAsset, durationSeconds, openedTrades, settleTrades } = useTerminalStore();
   const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const getBasePrice = (symbol: string): number => {
     const fixed: Record<string, number> = {
@@ -180,7 +179,7 @@ export default function DepositStep1TerminalPage() {
         const { success, invoices } = await res.json();
         if (!success || !invoices) return;
 
-        const mappedReceipts = invoices.map((inv: any) => ({
+        const mappedReceipts: any[] = invoices.map((inv: any) => ({
           receiptId: inv.receipt_id,
           tradeId: inv.id,
           timestamp: new Date(inv.issued_at).getTime(),
@@ -197,11 +196,11 @@ export default function DepositStep1TerminalPage() {
 
         useTerminalStore.setState((state) => {
           const byId = new Map<string, any>();
-          mappedReceipts.forEach((r) => byId.set(r.receiptId, r));
+          mappedReceipts.forEach((r: any) => byId.set(r.receiptId, r));
           state.receipts.forEach((r) => {
             if (!byId.has(r.receiptId)) byId.set(r.receiptId, r);
           });
-          const merged = Array.from(byId.values()).sort((a, b) => b.timestamp - a.timestamp);
+          const merged = Array.from(byId.values()).sort((a: any, b: any) => b.timestamp - a.timestamp);
           return { receipts: merged };
         });
       } catch (err) {
@@ -263,7 +262,7 @@ export default function DepositStep1TerminalPage() {
 
       <AssetSelector isOpen={isAssetSelectorOpen} onClose={() => setIsAssetSelectorOpen(false)} />
       <TradeClosedModal />
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal />
     </div>
   );
 }
